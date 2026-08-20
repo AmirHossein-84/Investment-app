@@ -32,17 +32,19 @@ const POPULAR_TICKERS = [
   { symbol: 'btc', name: 'بیت‌کوین', enName: 'Bitcoin', color: '#F7931A' },
   { symbol: 'eth', name: 'اتریوم', enName: 'Ethereum', color: '#627EEA' },
   { symbol: 'sol', name: 'سولانا', enName: 'Solana', color: '#14F195' },
-  { symbol: 'ton', name: 'تون‌کوین', enName: 'Toncoin', color: '#0088CC' },
+  { symbol: 'xrp', name: 'ریپل', enName: 'XRP', color: '#23292F' },
   { symbol: 'usdt', name: 'تتر', enName: 'Tether USD', color: '#26A17B' },
   { symbol: 'bnb', name: 'بایننس‌کوین', enName: 'BNB', color: '#F3BA2F' },
   { symbol: 'doge', name: 'دوج‌کوین', enName: 'Dogecoin', color: '#C2A633' },
   { symbol: 'trx', name: 'ترون', enName: 'TRON', color: '#FF0013' },
   { symbol: 'ada', name: 'کاردانو', enName: 'Cardano', color: '#0033AD' },
   { symbol: 'pol', name: 'پالیگان', enName: 'Polygon', color: '#8247E5' },
+  { symbol: 'dot', name: 'پولکادات', enName: 'Polkadot', color: '#E6007A' },
   { symbol: 'avax', name: 'آوالانچ', enName: 'Avalanche', color: '#E84142' },
   { symbol: 'sui', name: 'سویی', enName: 'Sui', color: '#2A82E4' },
   { symbol: 'near', name: 'نیر پروتکل', enName: 'NEAR Protocol', color: '#000000' },
   { symbol: 'link', name: 'چین‌لینک', enName: 'Chainlink', color: '#375BD2' },
+  { symbol: 'not', name: 'نات‌کوین', enName: 'Notcoin', color: '#EAB308' },
 ];
 
 export const CryptoMarketView: React.FC<CryptoMarketViewProps> = ({
@@ -57,15 +59,11 @@ export const CryptoMarketView: React.FC<CryptoMarketViewProps> = ({
 
   const { isConfigured, isSyncing, syncWithNobitex, tomanCashBalance } = useNobitex();
 
-  // Fetch live market stats for popular tickers + user coins
+  // Fetch live market stats for all coins
   const fetchMarketStats = async () => {
     setIsLoadingStats(true);
     try {
-      const symbols = new Set<string>();
-      POPULAR_TICKERS.forEach((t) => symbols.add(t.symbol));
-      cryptoAssets.forEach((a) => symbols.add(a.symbol.toLowerCase()));
-
-      const stats = await nobitexService.getMarketStats(Array.from(symbols), 'rls');
+      const stats = await nobitexService.getMarketStats(undefined, 'rls');
       setMarketStats(stats);
       setLastUpdated(new Date());
 
@@ -212,7 +210,6 @@ export const CryptoMarketView: React.FC<CryptoMarketViewProps> = ({
 
             // Check if user owns this coin
             const userAsset = cryptoAssets.find((a) => a.symbol.toLowerCase() === ticker.symbol);
-            const userHoldingVal = userAsset?.currentHoldingValue || 0;
             const userCoinAmount = userAsset?.currentAmount || 0;
 
             return (

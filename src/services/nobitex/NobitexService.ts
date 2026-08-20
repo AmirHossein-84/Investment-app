@@ -7,11 +7,10 @@ const COIN_METADATA: Record<string, { name: string; color: string; targetPercent
   btc: { name: 'بیت‌کوین', color: '#F7931A', targetPercent: 25 },
   eth: { name: 'اتریوم', color: '#627EEA', targetPercent: 25 },
   sol: { name: 'سولانا', color: '#14F195', targetPercent: 20 },
-  ton: { name: 'تون‌کوین', color: '#0088CC', targetPercent: 15 },
+  xrp: { name: 'ریپل', color: '#23292F', targetPercent: 10 },
   bnb: { name: 'بایننس‌کوین', color: '#F3BA2F', targetPercent: 15 },
   ada: { name: 'کاردانو', color: '#0033AD', targetPercent: 10 },
   dot: { name: 'پولکادات', color: '#E6007A', targetPercent: 10 },
-  xrp: { name: 'ریپل', color: '#23292F', targetPercent: 10 },
   doge: { name: 'دوج‌کوین', color: '#C2A633', targetPercent: 10 },
   trx: { name: 'ترون', color: '#FF0013', targetPercent: 10 },
   pol: { name: 'پالیگان', color: '#8247E5', targetPercent: 10 },
@@ -21,6 +20,7 @@ const COIN_METADATA: Record<string, { name: string; color: string; targetPercent
   sui: { name: 'سویی', color: '#2A82E4', targetPercent: 10 },
   apt: { name: 'آپتوس', color: '#2EE5AC', targetPercent: 10 },
   usdt: { name: 'تتر', color: '#26A17B', targetPercent: 10 },
+  not: { name: 'نات‌کوین', color: '#EAB308', targetPercent: 10 },
 };
 
 class NobitexService {
@@ -144,20 +144,15 @@ class NobitexService {
   }
 
   /**
-   * Fetch Market Stats (Latest Prices in Rials/Tomans)
+   * Fetch Market Stats (Latest Prices in Rials/Tomans for all pairs)
    */
   async getMarketStats(
-    srcCurrencies?: string[],
+    _srcCurrencies?: string[],
     dstCurrency: 'rls' | 'usdt' = 'rls'
   ): Promise<Record<string, NobitexMarketStat>> {
     const base = this.getBaseUrl();
-    const params = new URLSearchParams();
-    if (srcCurrencies && srcCurrencies.length > 0) {
-      params.append('srcCurrency', srcCurrencies.join(',').toLowerCase());
-    }
-    params.append('dstCurrency', dstCurrency);
-
-    const url = `${base}/market/stats?${params.toString()}`;
+    // Query without srcCurrency filter so Nobitex returns all 150+ valid pairs reliably
+    const url = `${base}/market/stats?dstCurrency=${dstCurrency}`;
 
     const res = await fetch(url, {
       method: 'GET',
@@ -209,13 +204,8 @@ class NobitexService {
     const rlsWallet = wallets.find((w) => w.currency.toLowerCase() === 'rls');
     const tomanBalance = rlsWallet ? Math.round(parseFloat(rlsWallet.balance || '0') / 10) : 0;
 
-    // 3. Fetch Market Prices for all coins (existing + newly found in wallet)
-    const allSymbols = new Set<string>();
-    existingAssets.forEach((a) => allSymbols.add(a.symbol.toLowerCase()));
-    cryptoWallets.forEach((w) => allSymbols.add(w.currency.toLowerCase()));
-
-    const symbolList = Array.from(allSymbols);
-    const stats = await this.getMarketStats(symbolList, 'rls');
+    // 3. Fetch Market Prices for all coins
+    const stats = await this.getMarketStats(undefined, 'rls');
 
     // Tether price in Rials to convert any USDT-only rates if needed
     const usdtPriceRials = stats['usdt-rls']?.latest ? parseFloat(stats['usdt-rls'].latest) : 900000;
