@@ -11,6 +11,7 @@ import {
   PieChart,
   Sparkles,
   Zap,
+  RotateCcw,
 } from 'lucide-react';
 import { AppSettings, CryptoAsset } from '../../types/investment';
 import { formatPercent, toPersianDigits } from '../../utils/formatters';
@@ -24,6 +25,25 @@ interface PercentagesConfigProps {
   updateCryptoAssets: (assets: CryptoAsset[]) => void;
   onNotify?: (message: string, type?: 'success' | 'info' | 'error') => void;
 }
+
+// Initial strategy target percentages
+const DEFAULT_STRATEGY_WEIGHTS: Record<string, number> = {
+  eth: 25,
+  btc: 19,
+  bnb: 15,
+  ada: 9,
+  dot: 9,
+  trx: 8,
+  xrp: 8,
+  doge: 5,
+  pol: 2,
+  sol: 10,
+  avax: 5,
+  link: 5,
+  sui: 5,
+  near: 5,
+  not: 5,
+};
 
 // Clean duplicate parentheses from coin names
 function cleanCoinName(name: string, symbol: string): { faName: string; enName: string } {
@@ -45,7 +65,36 @@ export const PercentagesConfig: React.FC<PercentagesConfigProps> = ({
   const totalCryptoTargetSum = cryptoAssets.reduce((sum, a) => sum + (a.targetPercent || 0), 0);
   const isCryptoSum100 = Math.abs(totalCryptoTargetSum - 100) < 0.2;
 
-  // 1. Auto-Normalize to 100%
+  // 1. Suggested Strategy Balance (ETH 25%, BTC 19%, BNB 15%, ADA 9%, DOT 9%, TRX 8%, XRP 8%, DOGE 5%, POL 2%)
+  const handleSuggestedStrategyBalance = () => {
+    triggerHaptic('success');
+    if (cryptoAssets.length === 0) return;
+
+    // Apply baseline weights
+    let updated = cryptoAssets.map((a) => {
+      const sym = a.symbol.toLowerCase();
+      const weight = DEFAULT_STRATEGY_WEIGHTS[sym] || 5;
+      return {
+        ...a,
+        targetPercent: weight,
+      };
+    });
+
+    // Normalize if the sum doesn't match 100 (e.g. if user has fewer or more coins)
+    const currentSum = updated.reduce((s, a) => s + a.targetPercent, 0);
+    if (currentSum > 0 && Math.abs(currentSum - 100) > 0.1) {
+      const factor = 100 / currentSum;
+      updated = updated.map((a) => ({
+        ...a,
+        targetPercent: Math.round(a.targetPercent * factor * 10) / 10,
+      }));
+    }
+
+    updateCryptoAssets(updated);
+    onNotify?.('تراز پیشنهادی استراتژی (ETH 25%, BTC 19%, ...) اعمال شد', 'success');
+  };
+
+  // 2. Proportional Auto-Normalize current numbers to 100%
   const handleNormalizeCryptoPercents = () => {
     triggerHaptic('success');
     if (totalCryptoTargetSum <= 0) return;
@@ -55,10 +104,10 @@ export const PercentagesConfig: React.FC<PercentagesConfigProps> = ({
       targetPercent: Math.round(a.targetPercent * factor * 10) / 10,
     }));
     updateCryptoAssets(updated);
-    onNotify?.('درصدها بر روی ۱۰۰٪ تراز شدند', 'success');
+    onNotify?.('درصدهای فعلی روی ۱۰۰٪ تراز شدند', 'info');
   };
 
-  // 2. Equal Split across all coins
+  // 3. Equal Split across all coins
   const handleEqualSplit = () => {
     triggerHaptic('medium');
     if (cryptoAssets.length === 0) return;
@@ -69,27 +118,6 @@ export const PercentagesConfig: React.FC<PercentagesConfigProps> = ({
     }));
     updateCryptoAssets(updated);
     onNotify?.(`درصدها به صورت مساوی (${toPersianDigits(equalVal)}٪) تقسیم شدند`, 'info');
-  };
-
-  // 3. Majors (BTC & ETH 50% split, others evenly)
-  const handleMajorsWeighted = () => {
-    triggerHaptic('medium');
-    const remainingCount = cryptoAssets.filter(
-      (a) => a.symbol.toLowerCase() !== 'btc' && a.symbol.toLowerCase() !== 'eth'
-    ).length;
-
-    const remainingVal =
-      remainingCount > 0 ? Math.round((50 / remainingCount) * 10) / 10 : 0;
-
-    const updated = cryptoAssets.map((a) => {
-      const sym = a.symbol.toLowerCase();
-      if (sym === 'btc') return { ...a, targetPercent: 30 };
-      if (sym === 'eth') return { ...a, targetPercent: 20 };
-      return { ...a, targetPercent: remainingVal };
-    });
-
-    updateCryptoAssets(updated);
-    onNotify?.('تخصیص بر اساس بیت‌کوین (۳۰٪) و اتریوم (۲۰٪) اعمال شد', 'info');
   };
 
   // Adjust specific coin percentage
@@ -368,33 +396,46 @@ export const PercentagesConfig: React.FC<PercentagesConfigProps> = ({
         </div>
 
         {/* 1-Tap Quick Action Presets */}
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+          {/* Main Suggested Strategy Button */}
           <button
             type="button"
-            onClick={handleNormalizeCryptoPercents}
-            className="flex-1 min-w-[120px] py-2 px-2.5 rounded-xl bg-indigo-500/15 hover:bg-indigo-500/25 text-indigo-300 border border-indigo-500/30 text-[11px] font-bold flex items-center justify-center gap-1.5 transition-all interactive-tap touch-target"
+            onClick={handleSuggestedStrategyBalance}
+            className="py-2.5 px-3 rounded-2xl bg-gradient-to-r from-gold-500/20 via-indigo-500/20 to-gold-500/20 hover:from-gold-500/30 hover:to-indigo-500/30 text-gold-300 border border-gold-500/40 text-xs font-black flex items-center justify-center gap-1.5 transition-all interactive-tap touch-target shadow-sm"
           >
-            <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
-            <span>تراز ۱۰۰٪ خودکار</span>
+            <Sparkles className="w-4 h-4 text-gold-400" />
+            <span>تراز پیشنهادی (استراتژی اولیه)</span>
           </button>
 
+          {/* Equal Split */}
           <button
             type="button"
             onClick={handleEqualSplit}
-            className="flex-1 min-w-[120px] py-2 px-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800 text-[11px] font-bold flex items-center justify-center gap-1.5 transition-all interactive-tap touch-target"
+            className="py-2.5 px-3 rounded-2xl bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800 text-xs font-bold flex items-center justify-center gap-1.5 transition-all interactive-tap touch-target"
           >
             <Sliders className="w-3.5 h-3.5 text-slate-400" />
             <span>تقسیم مساوی ({toPersianDigits(cryptoAssets.length > 0 ? (100 / cryptoAssets.length).toFixed(0) : '0')}٪)</span>
           </button>
 
-          <button
-            type="button"
-            onClick={handleMajorsWeighted}
-            className="flex-1 min-w-[120px] py-2 px-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800 text-[11px] font-bold flex items-center justify-center gap-1.5 transition-all interactive-tap touch-target"
-          >
-            <Zap className="w-3.5 h-3.5 text-amber-400" />
-            <span>لیدرها (BTC/ETH ۵۰٪)</span>
-          </button>
+          {/* Proportional Normalize */}
+          {!isCryptoSum100 && (
+            <button
+              type="button"
+              onClick={handleNormalizeCryptoPercents}
+              className="py-2.5 px-3 rounded-2xl bg-slate-900 hover:bg-slate-800 text-indigo-300 border border-indigo-500/30 text-xs font-bold flex items-center justify-center gap-1.5 transition-all interactive-tap touch-target"
+            >
+              <RotateCcw className="w-3.5 h-3.5 text-indigo-400" />
+              <span>تراز خودکار فعلی</span>
+            </button>
+          )}
+        </div>
+
+        {/* Strategy Breakdown Tooltip / Explanation */}
+        <div className="p-3 rounded-2xl bg-slate-950/90 border border-slate-800/80 text-[11px] text-slate-400 flex items-center justify-between gap-2">
+          <span>ترکیب استراتژی پیشنهادی:</span>
+          <span className="text-slate-300 font-bold text-[10px] dir-ltr text-right">
+            ETH 25% • BTC 19% • BNB 15% • ADA 9% • DOT 9% • TRX 8% • XRP 8% • DOGE 5% • POL 2%
+          </span>
         </div>
 
         {/* Crypto Items List */}
