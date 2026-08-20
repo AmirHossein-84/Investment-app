@@ -1,5 +1,17 @@
 import React from 'react';
-import { Percent, Scale, RefreshCw, Layers, CheckCircle2 } from 'lucide-react';
+import {
+  Percent,
+  Scale,
+  RefreshCw,
+  Layers,
+  CheckCircle2,
+  Sliders,
+  Plus,
+  Minus,
+  PieChart,
+  Sparkles,
+  Zap,
+} from 'lucide-react';
 import { AppSettings, CryptoAsset } from '../../types/investment';
 import { formatPercent, toPersianDigits } from '../../utils/formatters';
 import { triggerHaptic } from '../../utils/haptics';
@@ -13,6 +25,16 @@ interface PercentagesConfigProps {
   onNotify?: (message: string, type?: 'success' | 'info' | 'error') => void;
 }
 
+// Clean duplicate parentheses from coin names
+function cleanCoinName(name: string, symbol: string): { faName: string; enName: string } {
+  const clean = name.replace(/[()]/g, ' ').replace(/\s+/g, ' ').trim();
+  const parts = clean.split(/[-–—/]/).map((s) => s.trim());
+  return {
+    faName: parts[0] || symbol,
+    enName: parts[1] || symbol.toUpperCase(),
+  };
+}
+
 export const PercentagesConfig: React.FC<PercentagesConfigProps> = ({
   settings,
   updateSettings,
@@ -21,8 +43,9 @@ export const PercentagesConfig: React.FC<PercentagesConfigProps> = ({
   onNotify,
 }) => {
   const totalCryptoTargetSum = cryptoAssets.reduce((sum, a) => sum + (a.targetPercent || 0), 0);
-  const isCryptoSum100 = Math.abs(totalCryptoTargetSum - 100) < 0.1;
+  const isCryptoSum100 = Math.abs(totalCryptoTargetSum - 100) < 0.2;
 
+  // 1. Auto-Normalize to 100%
   const handleNormalizeCryptoPercents = () => {
     triggerHaptic('success');
     if (totalCryptoTargetSum <= 0) return;
@@ -32,13 +55,57 @@ export const PercentagesConfig: React.FC<PercentagesConfigProps> = ({
       targetPercent: Math.round(a.targetPercent * factor * 10) / 10,
     }));
     updateCryptoAssets(updated);
+    onNotify?.('درصدها بر روی ۱۰۰٪ تراز شدند', 'success');
   };
 
+  // 2. Equal Split across all coins
+  const handleEqualSplit = () => {
+    triggerHaptic('medium');
+    if (cryptoAssets.length === 0) return;
+    const equalVal = Math.round((100 / cryptoAssets.length) * 10) / 10;
+    const updated = cryptoAssets.map((a) => ({
+      ...a,
+      targetPercent: equalVal,
+    }));
+    updateCryptoAssets(updated);
+    onNotify?.(`درصدها به صورت مساوی (${toPersianDigits(equalVal)}٪) تقسیم شدند`, 'info');
+  };
+
+  // 3. Majors (BTC & ETH 50% split, others evenly)
+  const handleMajorsWeighted = () => {
+    triggerHaptic('medium');
+    const remainingCount = cryptoAssets.filter(
+      (a) => a.symbol.toLowerCase() !== 'btc' && a.symbol.toLowerCase() !== 'eth'
+    ).length;
+
+    const remainingVal =
+      remainingCount > 0 ? Math.round((50 / remainingCount) * 10) / 10 : 0;
+
+    const updated = cryptoAssets.map((a) => {
+      const sym = a.symbol.toLowerCase();
+      if (sym === 'btc') return { ...a, targetPercent: 30 };
+      if (sym === 'eth') return { ...a, targetPercent: 20 };
+      return { ...a, targetPercent: remainingVal };
+    });
+
+    updateCryptoAssets(updated);
+    onNotify?.('تخصیص بر اساس بیت‌کوین (۳۰٪) و اتریوم (۲۰٪) اعمال شد', 'info');
+  };
+
+  // Adjust specific coin percentage
   const handleCryptoPercentChange = (id: string, newPercent: number) => {
+    const clamped = Math.max(0, Math.min(100, Math.round(newPercent * 10) / 10));
     const updated = cryptoAssets.map((a) =>
-      a.id === id ? { ...a, targetPercent: Math.max(0, newPercent) } : a
+      a.id === id ? { ...a, targetPercent: clamped } : a
     );
     updateCryptoAssets(updated);
+  };
+
+  const handleStepCryptoPercent = (id: string, delta: number) => {
+    triggerHaptic('light');
+    const asset = cryptoAssets.find((a) => a.id === id);
+    if (!asset) return;
+    handleCryptoPercentChange(id, (asset.targetPercent || 0) + delta);
   };
 
   const handleGoldSplitChange = (goldVal: number) => {
@@ -48,30 +115,52 @@ export const PercentagesConfig: React.FC<PercentagesConfigProps> = ({
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 pb-24">
       
       {/* 1. TOP-LEVEL SAVINGS PERCENTAGE (30% DEFAULT) */}
-      <div className="glass-card p-4 sm:p-6 border border-slate-800 space-y-3.5">
+      <div className="glass-card p-4 sm:p-5 border border-slate-800 space-y-3.5">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-2xl bg-emerald-500/15 text-emerald-400 flex items-center justify-center">
+            <div className="w-8 h-8 rounded-xl bg-emerald-500/15 text-emerald-400 flex items-center justify-center font-bold text-sm">
               <Percent className="w-4 h-4" />
             </div>
             <div>
-              <h3 className="text-sm sm:text-base font-black text-slate-100">
+              <h3 className="text-sm font-black text-slate-100">
                 درصد کل پس‌انداز از سرمایه ورودی
               </h3>
               <p className="text-[11px] text-slate-400">
-                سهم کل پس‌انداز جهت سرمایه‌گذاری (پیش‌فرض: ۳۰٪)
+                سهم کل پس‌انداز ماهانه (پیش‌فرض: ۳۰٪)
               </p>
             </div>
           </div>
-          <span className="text-xl font-black text-emerald-400">
+          <span className="text-lg font-black text-emerald-400">
             {formatPercent(settings.savingsPercent)}
           </span>
         </div>
 
-        <div className="space-y-2 pt-1">
+        {/* Quick Ratio Chips */}
+        <div className="flex items-center gap-2 pt-1">
+          {[15, 20, 25, 30, 40, 50].map((pct) => (
+            <button
+              key={pct}
+              type="button"
+              onClick={() => {
+                triggerHaptic('light');
+                updateSettings({ savingsPercent: pct });
+              }}
+              className={`flex-1 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                settings.savingsPercent === pct
+                  ? 'bg-emerald-500 text-slate-950 shadow-md font-black'
+                  : 'bg-slate-900/90 text-slate-400 hover:text-slate-200 border border-slate-800'
+              }`}
+            >
+              {toPersianDigits(pct)}٪
+            </button>
+          ))}
+        </div>
+
+        {/* Range Slider */}
+        <div className="pt-1">
           <input
             type="range"
             min="5"
@@ -79,25 +168,26 @@ export const PercentagesConfig: React.FC<PercentagesConfigProps> = ({
             step="1"
             value={settings.savingsPercent}
             onChange={(e) => updateSettings({ savingsPercent: parseInt(e.target.value) })}
-            className="w-full h-3 bg-slate-950 rounded-xl appearance-none cursor-pointer accent-emerald-400 touch-target"
+            className="custom-range-slider"
+            style={{ accentColor: '#10B981' }}
           />
-          <div className="flex justify-between text-[11px] text-slate-400 font-medium">
+          <div className="flex justify-between text-[10px] text-slate-500 font-medium">
             <span>۵٪ (حداقل)</span>
-            <span className="text-emerald-400 font-bold">۳۰٪ (پیش‌فرض پیشنهادی)</span>
+            <span className="text-emerald-400 font-bold">۳۰٪ (پیشنهادی)</span>
             <span>۱۰۰٪ (کل مبلغ)</span>
           </div>
         </div>
       </div>
 
       {/* 2. GOLD VS CRYPTO SPLIT (80% / 20% DEFAULT) */}
-      <div className="glass-card p-4 sm:p-6 border border-slate-800 space-y-3.5">
+      <div className="glass-card p-4 sm:p-5 border border-slate-800 space-y-3.5">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-2xl bg-amber-500/15 text-gold-400 flex items-center justify-center">
+            <div className="w-8 h-8 rounded-xl bg-amber-500/15 text-gold-400 flex items-center justify-center font-bold text-sm">
               <Scale className="w-4 h-4" />
             </div>
             <div>
-              <h3 className="text-sm sm:text-base font-black text-slate-100">
+              <h3 className="text-sm font-black text-slate-100">
                 نسبت تقسیم پس‌انداز بین طلا و کریپتو
               </h3>
               <p className="text-[11px] text-slate-400">
@@ -107,24 +197,50 @@ export const PercentagesConfig: React.FC<PercentagesConfigProps> = ({
           </div>
         </div>
 
-        {/* Display badges */}
-        <div className="grid grid-cols-2 gap-3">
-          <div className="p-3.5 rounded-2xl bg-amber-500/10 border border-gold-500/30 flex items-center justify-between">
+        {/* Ratio Badges */}
+        <div className="grid grid-cols-2 gap-2.5">
+          <div className="p-3 rounded-2xl bg-amber-500/10 border border-gold-500/30 flex items-center justify-between">
             <span className="text-xs text-slate-300 font-bold">سهم طلا:</span>
-            <span className="text-base font-black text-gold-400">
+            <span className="text-sm font-black text-gold-400">
               {formatPercent(settings.goldPercent)}
             </span>
           </div>
-          <div className="p-3.5 rounded-2xl bg-indigo-500/10 border border-indigo-500/30 flex items-center justify-between">
+          <div className="p-3 rounded-2xl bg-indigo-500/10 border border-indigo-500/30 flex items-center justify-between">
             <span className="text-xs text-slate-300 font-bold">سهم رمزارزها:</span>
-            <span className="text-base font-black text-indigo-400">
+            <span className="text-sm font-black text-indigo-400">
               {formatPercent(settings.cryptoPercent)}
             </span>
           </div>
         </div>
 
+        {/* Quick Ratio Presets */}
+        <div className="flex items-center gap-2 pt-1">
+          {[
+            { gold: 80, crypto: 20, label: '۸۰ طلا / ۲۰ کریپتو' },
+            { gold: 70, crypto: 30, label: '۷۰ طلا / ۳۰ کریپتو' },
+            { gold: 50, crypto: 50, label: '۵۰ / ۵۰ مساوی' },
+            { gold: 90, crypto: 10, label: '۹۰ طلا / ۱۰ کریپتو' },
+          ].map((preset) => (
+            <button
+              key={preset.gold}
+              type="button"
+              onClick={() => {
+                triggerHaptic('light');
+                handleGoldSplitChange(preset.gold);
+              }}
+              className={`flex-1 py-1.5 px-1 rounded-xl text-[10px] font-bold transition-all truncate ${
+                settings.goldPercent === preset.gold
+                  ? 'bg-gold-400 text-slate-950 shadow-md font-black'
+                  : 'bg-slate-900/90 text-slate-400 hover:text-slate-200 border border-slate-800'
+              }`}
+            >
+              {preset.label}
+            </button>
+          ))}
+        </div>
+
         {/* Linked Slider */}
-        <div className="space-y-2 pt-1">
+        <div className="pt-1">
           <input
             type="range"
             min="0"
@@ -132,9 +248,10 @@ export const PercentagesConfig: React.FC<PercentagesConfigProps> = ({
             step="1"
             value={settings.goldPercent}
             onChange={(e) => handleGoldSplitChange(parseInt(e.target.value))}
-            className="w-full h-3 bg-slate-950 rounded-xl appearance-none cursor-pointer accent-gold-400 touch-target"
+            className="custom-range-slider"
+            style={{ accentColor: '#D4AF37' }}
           />
-          <div className="flex justify-between text-[11px] text-slate-400 font-medium">
+          <div className="flex justify-between text-[10px] text-slate-500 font-medium">
             <span>۰٪ طلا / ۱۰۰٪ کریپتو</span>
             <span className="text-gold-400 font-bold">۸۰٪ طلا / ۲۰٪ کریپتو</span>
             <span>۱۰۰٪ طلا / ۰٪ کریپتو</span>
@@ -150,33 +267,33 @@ export const PercentagesConfig: React.FC<PercentagesConfigProps> = ({
       />
 
       {/* 4. CALCULATION ENGINE MODE */}
-      <div className="glass-card p-4 sm:p-6 border border-slate-800 space-y-3.5">
+      <div className="glass-card p-4 sm:p-5 border border-slate-800 space-y-3.5">
         <div>
-          <h3 className="text-sm sm:text-base font-black text-slate-100 mb-1">
+          <h3 className="text-sm font-black text-slate-100 mb-0.5">
             الگوریتم و نحوه محاسبه خرید
           </h3>
-          <p className="text-xs text-slate-400">
+          <p className="text-[11px] text-slate-400">
             انتخاب نحوه تخصیص سرمایه جدید بر اساس سبد فعلی شما
           </p>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
           {/* Rebalance Mode */}
           <div
             onClick={() => {
               triggerHaptic('medium');
               updateSettings({ calculationMode: 'rebalance' });
             }}
-            className={`p-4 rounded-3xl border transition-all interactive-tap ${
+            className={`p-3.5 rounded-2xl border transition-all interactive-tap ${
               settings.calculationMode === 'rebalance'
                 ? 'bg-amber-500/15 border-gold-500/50'
                 : 'bg-slate-950/70 border-slate-800 hover:border-slate-700'
             }`}
           >
-            <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center justify-between mb-1.5">
               <div className="flex items-center gap-2">
                 <RefreshCw className="w-4 h-4 text-gold-400" />
-                <span className="font-black text-xs sm:text-sm text-slate-100">
+                <span className="font-black text-xs text-slate-100">
                   توازن هوشمند سبد (پیشنهادی)
                 </span>
               </div>
@@ -184,8 +301,8 @@ export const PercentagesConfig: React.FC<PercentagesConfigProps> = ({
                 <CheckCircle2 className="w-4 h-4 text-gold-400" />
               )}
             </div>
-            <p className="text-[11px] text-slate-400 leading-relaxed">
-              مانند فرمول تصویر: خریدهای جدید طوری تقسیم می‌شوند که کل سبد (دارایی قبلی + خرید جدید) به درصدهای هدف برسد.
+            <p className="text-[10px] text-slate-400 leading-relaxed">
+              خریدهای جدید طوری تقسیم می‌شوند که کل سبد (دارایی قبلی + خرید جدید) دقیقاً به نسبت ۸۰ به ۲۰ برسد.
             </p>
           </div>
 
@@ -195,16 +312,16 @@ export const PercentagesConfig: React.FC<PercentagesConfigProps> = ({
               triggerHaptic('medium');
               updateSettings({ calculationMode: 'direct' });
             }}
-            className={`p-4 rounded-3xl border transition-all interactive-tap ${
+            className={`p-3.5 rounded-2xl border transition-all interactive-tap ${
               settings.calculationMode === 'direct'
                 ? 'bg-indigo-500/15 border-indigo-500/50'
                 : 'bg-slate-950/70 border-slate-800 hover:border-slate-700'
             }`}
           >
-            <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center justify-between mb-1.5">
               <div className="flex items-center gap-2">
                 <Layers className="w-4 h-4 text-indigo-400" />
-                <span className="font-black text-xs sm:text-sm text-slate-100">
+                <span className="font-black text-xs text-slate-100">
                   تقسیم مستقیم درصدی
                 </span>
               </div>
@@ -212,28 +329,34 @@ export const PercentagesConfig: React.FC<PercentagesConfigProps> = ({
                 <CheckCircle2 className="w-4 h-4 text-indigo-400" />
               )}
             </div>
-            <p className="text-[11px] text-slate-400 leading-relaxed">
-              مبلغ پس‌انداز جدید مستقیماً بر اساس درصدها تقسیم می‌شود و تفاوت موجودی قبلی در تقسیم خرید جدید لحاظ نمی‌گردد.
+            <p className="text-[10px] text-slate-400 leading-relaxed">
+              مبلغ پس‌انداز جدید مستقیماً به نسبت ۸۰٪ طلا و ۲۰٪ رمزارز تقسیم می‌شود بدون بررسی مانده قبلی.
             </p>
           </div>
         </div>
       </div>
 
       {/* 5. INDIVIDUAL CRYPTO WEIGHTS CONFIG */}
-      <div className="glass-card p-4 sm:p-6 border border-slate-800 space-y-3.5">
+      <div className="glass-card p-4 sm:p-5 border border-slate-800 space-y-4">
+        
+        {/* Header & Status */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-3">
           <div>
-            <h3 className="text-base font-black text-slate-100">
-              درصدهای هدف هر رمزارز
-            </h3>
-            <p className="text-xs text-slate-400 mt-0.5">
-              مجموع درصدهای ارزها باید برابر ۱۰۰٪ باشد.
+            <div className="flex items-center gap-2">
+              <PieChart className="w-4 h-4 text-indigo-400" />
+              <h3 className="text-sm font-black text-slate-100">
+                درصدهای هدف هر رمزارز
+              </h3>
+            </div>
+            <p className="text-[11px] text-slate-400 mt-0.5">
+              مجموع درصدهای هدف باید برابر ۱۰۰٪ باشد
             </p>
           </div>
 
+          {/* Sum pill badge */}
           <div className="flex items-center gap-2">
             <span
-              className={`text-xs px-3 py-1.5 rounded-2xl font-black border ${
+              className={`text-xs px-3 py-1 rounded-full font-black border ${
                 isCryptoSum100
                   ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/40'
                   : 'bg-amber-500/15 text-amber-400 border-amber-500/40'
@@ -241,67 +364,134 @@ export const PercentagesConfig: React.FC<PercentagesConfigProps> = ({
             >
               مجموع: {toPersianDigits(totalCryptoTargetSum.toFixed(1))}٪
             </span>
-
-            {!isCryptoSum100 && (
-              <button
-                onClick={handleNormalizeCryptoPercents}
-                className="text-xs px-3 py-1.5 rounded-2xl bg-amber-500/20 hover:bg-amber-500/30 text-gold-300 border border-gold-500/40 font-bold transition-all interactive-tap touch-target"
-                title="تنظیم خودکار درصدها برای رسیدن به ۱۰۰٪"
-              >
-                تراز ۱۰۰٪ خودکار
-              </button>
-            )}
           </div>
         </div>
 
-        {/* Crypto items sliders list */}
-        <div className="space-y-2.5">
-          {cryptoAssets.map((asset) => (
-            <div
-              key={asset.id}
-              className="p-3.5 rounded-2xl bg-slate-950/80 border border-slate-800/90 space-y-2"
-            >
-              <div className="flex items-center justify-between text-xs">
-                <div className="flex items-center gap-2.5">
-                  <span
-                    className="w-3.5 h-3.5 rounded-full shrink-0 shadow-sm"
-                    style={{ backgroundColor: asset.color }}
-                  />
-                  <span className="font-black text-slate-100 text-sm">{asset.symbol}</span>
-                  <span className="text-[11px] text-slate-400">({asset.name})</span>
+        {/* 1-Tap Quick Action Presets */}
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={handleNormalizeCryptoPercents}
+            className="flex-1 min-w-[120px] py-2 px-2.5 rounded-xl bg-indigo-500/15 hover:bg-indigo-500/25 text-indigo-300 border border-indigo-500/30 text-[11px] font-bold flex items-center justify-center gap-1.5 transition-all interactive-tap touch-target"
+          >
+            <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
+            <span>تراز ۱۰۰٪ خودکار</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={handleEqualSplit}
+            className="flex-1 min-w-[120px] py-2 px-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800 text-[11px] font-bold flex items-center justify-center gap-1.5 transition-all interactive-tap touch-target"
+          >
+            <Sliders className="w-3.5 h-3.5 text-slate-400" />
+            <span>تقسیم مساوی ({toPersianDigits(cryptoAssets.length > 0 ? (100 / cryptoAssets.length).toFixed(0) : '0')}٪)</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={handleMajorsWeighted}
+            className="flex-1 min-w-[120px] py-2 px-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800 text-[11px] font-bold flex items-center justify-center gap-1.5 transition-all interactive-tap touch-target"
+          >
+            <Zap className="w-3.5 h-3.5 text-amber-400" />
+            <span>لیدرها (BTC/ETH ۵۰٪)</span>
+          </button>
+        </div>
+
+        {/* Crypto Items List */}
+        <div className="space-y-2.5 pt-1">
+          {cryptoAssets.map((asset) => {
+            const { faName, enName } = cleanCoinName(asset.name, asset.symbol);
+
+            return (
+              <div
+                key={asset.id}
+                className="p-3 sm:p-3.5 rounded-2xl bg-slate-950/80 border border-slate-800/80 hover:border-slate-700 transition-all space-y-2.5"
+              >
+                {/* Row Header: Coin Info + Stepper + Direct Input */}
+                <div className="flex items-center justify-between gap-2">
+                  
+                  {/* Coin Info Badge */}
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div
+                      className="w-7 h-7 rounded-xl flex items-center justify-center font-black text-xs shrink-0"
+                      style={{ backgroundColor: `${asset.color}25`, color: asset.color }}
+                    >
+                      {asset.symbol.toUpperCase().slice(0, 3)}
+                    </div>
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-black text-slate-100 text-xs truncate">
+                          {faName}
+                        </span>
+                        <span className="text-[10px] text-slate-500 font-mono">
+                          {asset.symbol.toUpperCase()}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Stepper Controls (- / Value / +) */}
+                  <div className="flex items-center gap-1 shrink-0">
+                    {/* Minus Button */}
+                    <button
+                      type="button"
+                      onClick={() => handleStepCryptoPercent(asset.id, -1)}
+                      className="w-7 h-7 rounded-lg bg-slate-900 hover:bg-slate-800 active:bg-slate-700 text-slate-300 border border-slate-800 flex items-center justify-center interactive-tap"
+                      title="کاهش ۱ درصد"
+                    >
+                      <Minus className="w-3.5 h-3.5" />
+                    </button>
+
+                    {/* Numeric Input */}
+                    <div className="relative flex items-center">
+                      <input
+                        type="number"
+                        min="0"
+                        max="100"
+                        step="1"
+                        value={asset.targetPercent}
+                        onChange={(e) =>
+                          handleCryptoPercentChange(asset.id, parseFloat(e.target.value) || 0)
+                        }
+                        className="w-12 bg-slate-900 border border-slate-700 rounded-lg py-1 text-center dir-ltr text-xs font-black text-slate-100 focus:outline-none focus:border-indigo-500 font-mono"
+                      />
+                      <span className="text-[10px] text-slate-500 font-bold pr-1">٪</span>
+                    </div>
+
+                    {/* Plus Button */}
+                    <button
+                      type="button"
+                      onClick={() => handleStepCryptoPercent(asset.id, 1)}
+                      className="w-7 h-7 rounded-lg bg-slate-900 hover:bg-slate-800 active:bg-slate-700 text-slate-300 border border-slate-800 flex items-center justify-center interactive-tap"
+                      title="افزایش ۱ درصد"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+
                 </div>
 
-                <div className="flex items-center gap-1.5">
+                {/* Sleek Gradient Range Slider */}
+                <div className="px-1">
                   <input
-                    type="number"
+                    type="range"
                     min="0"
-                    max="100"
-                    step="1"
+                    max="50"
+                    step="0.5"
                     value={asset.targetPercent}
                     onChange={(e) =>
                       handleCryptoPercentChange(asset.id, parseFloat(e.target.value) || 0)
                     }
-                    className="w-16 bg-slate-900 border border-slate-700 rounded-xl px-2.5 py-1.5 text-center dir-ltr text-xs font-black text-gold-400 focus:outline-none focus:border-gold-500"
+                    className="custom-range-slider"
+                    style={{ accentColor: asset.color }}
                   />
-                  <span className="text-slate-400 font-bold">٪</span>
                 </div>
-              </div>
 
-              <input
-                type="range"
-                min="0"
-                max="50"
-                step="0.5"
-                value={asset.targetPercent}
-                onChange={(e) =>
-                  handleCryptoPercentChange(asset.id, parseFloat(e.target.value) || 0)
-                }
-                className="w-full h-2.5 bg-slate-900 rounded-xl appearance-none cursor-pointer touch-target"
-                style={{ accentColor: asset.color }}
-              />
-            </div>
-          ))}
+              </div>
+            );
+          })}
         </div>
+
       </div>
 
     </div>
