@@ -1,0 +1,16 @@
+{
+  "rewrites": [
+    {
+      "source": "/api/nobitex/:match*",
+      "destination": "https://apiv2.nobitex.ir/:match*"
+    },
+    {
+      "source": "/api/tsetmc/:match*",
+      "destination": "https://cdn.tsetmc.com/api/:match*"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
+}

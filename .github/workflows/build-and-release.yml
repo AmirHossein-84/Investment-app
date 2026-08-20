@@ -90,11 +90,17 @@ jobs:
       - name: Sync Capacitor iOS
         run: npx cap sync ios
 
+      - name: Install CocoaPods Dependencies
+        run: |
+          cd ios/App
+          pod install
+
       - name: Build Xcode Archive & Package IPA
         run: |
           cd ios/App
-          # Build unsigned xcarchive
+          # Build unsigned xcarchive using CocoaPods xcworkspace
           xcodebuild clean archive \
+            -workspace App.xcworkspace \
             -scheme App \
             -configuration Release \
             -archivePath build/App.xcarchive \
@@ -208,7 +214,7 @@ jobs:
                - فایل: **`Investment-App-v1.0.${{ github.run_number }}.ipa`**
                - نحوه نصب: دانلود کرده و با نرم‌افزارهای رایگان **Sideloadly** یا **AltStore** یا **SideStore** روی آیفون نصب کنید.
             3. **🌐 وب‌اپلیکیشن رایگان (PWA)**:
-               - نیازی به دانلود فایل نیست؛ کافیست لینک **GitHub Pages** مخزن را در **Safari** آیفون باز کرده و گزینه **Add to Home Screen** را بزنید.
+               - نیازی به دانلود فایل نیست؛ کافیست لینک وب‌اپلیکیشن (Vercel یا GitHub Pages) را در **Safari** آیفون باز کرده و گزینه **Add to Home Screen** را بزنید.
 
             ---
             <sub>کامپایل‌شده با GitHub Actions • ساخت ۱۰۰٪ خودکار</sub>
