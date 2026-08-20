@@ -62,9 +62,9 @@ export class TsetmcMarketDataProvider implements MarketDataProvider {
   private readonly minRequestIntervalMs = 250; // Max 4 requests per second
 
   constructor() {
-    // Check environment: In browser, use proxy endpoint to avoid CORS issues
-    const isBrowser = typeof window !== 'undefined';
-    this.baseUrl = isBrowser ? '/api/tsetmc' : this.fallbackUrl;
+    // In local dev, use Vite proxy to avoid CORS; in production web / native apps, call direct from user's IP
+    const isLocalhost = typeof window !== 'undefined' && window.location.hostname === 'localhost';
+    this.baseUrl = isLocalhost ? '/api/tsetmc' : this.fallbackUrl;
   }
 
   private async fetchWithThrottle(urlPath: string): Promise<any> {
