@@ -219,13 +219,13 @@ export const NobitexSyncModal: React.FC<NobitexSyncModalProps> = ({
             <div className="p-3 rounded-2xl bg-slate-900/60 border border-slate-800/80 text-[11px] text-slate-400 space-y-1">
               <span className="font-bold text-slate-300 block">راهنمای دریافت کلید نوبیتکس:</span>
               <p>
-                ۱. در پنل کاربری نوبیتکس وارد بخش <strong>پروفایل &gt; کلیدهای API</strong> شوید.
+                ۱. در سایت نوبیتکس از منوی <strong>امکانات &gt; مستندات API</strong> روی <strong>ایجاد کلید API</strong> بزنید.
               </p>
               <p>
-                ۲. یک کلید جدید با دسترسی <strong>فقط خواندن (READ)</strong> بسازید.
+                ۲. روی <strong>کلید جدید +</strong> زده و با انتخاب نام دلخواه و مدت اعتبار <strong>دائمی</strong> دکمه <strong>ایجاد کلید</strong> را بزنید.
               </p>
               <a
-                href="https://nobitex.ir/panel/api-keys"
+                href="https://nobitex.ir/panel/profile/api-services/"
                 target="_blank"
                 rel="noreferrer"
                 className="text-indigo-400 hover:text-indigo-300 font-bold inline-flex items-center gap-1 mt-1"
