@@ -1,0 +1,217 @@
+name: Multi-Platform Build, Release & GitHub Pages Deployment
+
+on:
+  push:
+    branches: [ main, master ]
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  # ========================================================
+  # JOB 1: Build Android APK
+  # ========================================================
+  build-android:
+    name: 🤖 Build Android APK
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+
+      - name: Set up Java JDK 21
+        uses: actions/setup-java@v5
+        with:
+          distribution: 'zulu'
+          java-version: '21'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build Web Assets (Vite PWA)
+        run: npm run build
+
+      - name: Sync Capacitor Android
+        run: npx cap sync android
+
+      - name: Make Gradlew Executable
+        run: chmod +x android/gradlew
+
+      - name: Build Android APK
+        run: |
+          cd android
+          ./gradlew assembleDebug
+
+      - name: Upload Android Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-apk
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+
+  # ========================================================
+  # JOB 2: Build iOS IPA (For Sideloadly / AltStore / SideStore)
+  # ========================================================
+  build-ios:
+    name: 🍏 Build iOS IPA
+    runs-on: macos-14
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build Web Assets
+        run: npm run build
+
+      - name: Sync Capacitor iOS
+        run: npx cap sync ios
+
+      - name: Build Xcode Archive & Package IPA
+        run: |
+          cd ios/App
+          # Build unsigned xcarchive
+          xcodebuild clean archive \
+            -scheme App \
+            -configuration Release \
+            -archivePath build/App.xcarchive \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            PROVISIONING_PROFILE="" \
+            COMPILER_INDEX_STORE_ENABLE=NO
+
+          # Package Payload into unsigned .ipa file
+          mkdir -p build/Payload
+          cp -r build/App.xcarchive/Products/Applications/App.app build/Payload/
+          cd build
+          zip -qr Investment-App.ipa Payload
+          cd ../../
+
+      - name: Upload iOS IPA Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-ipa
+          path: ios/App/build/Investment-App.ipa
+          if-no-files-found: error
+
+  # ========================================================
+  # JOB 3: Deploy to Free GitHub Pages (Safari 1-Tap PWA)
+  # ========================================================
+  deploy-pages:
+    name: 🌐 Deploy to Free GitHub Pages
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build Web App
+        run: npm run build
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload Pages Artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: 'dist'
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+
+  # ========================================================
+  # JOB 4: Create GitHub Release with APK & IPA
+  # ========================================================
+  release:
+    name: 📦 Publish GitHub Release
+    needs: [build-android, build-ios]
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/tags/v')
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download Android Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: android-apk
+          path: release-files
+
+      - name: Download iOS Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: ios-ipa
+          path: release-files
+
+      - name: Rename Release Files
+        run: |
+          mv release-files/app-debug.apk release-files/Investment-App-v1.0.${{ github.run_number }}.apk
+          mv release-files/Investment-App.ipa release-files/Investment-App-v1.0.${{ github.run_number }}.ipa
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: v1.0.${{ github.run_number }}
+          name: "📱 نسخه آماده نصب ${{ github.run_number }} (Android APK & iOS IPA)"
+          draft: false
+          prerelease: false
+          body: |
+            ## 🌟 نسخه نصبی اپلیکیشن مدیریت سبد سرمایه‌گذاری طلا و ارزهای دیجیتال
+
+            این فایل‌ها به صورت خودکار توسط **GitHub Actions** کامپایل شده‌اند:
+
+            ### 📥 فایل‌های قابل دانلود:
+            1. **🤖 اندروید (Android APK)**:
+               - فایل: **`Investment-App-v1.0.${{ github.run_number }}.apk`**
+               - نحوه نصب: مستقیم روی گوشی اندروید دانلود و لمس کنید تا نصب شود.
+            2. **🍏 آیفون (iOS IPA)**:
+               - فایل: **`Investment-App-v1.0.${{ github.run_number }}.ipa`**
+               - نحوه نصب: دانلود کرده و با نرم‌افزارهای رایگان **Sideloadly** یا **AltStore** یا **SideStore** روی آیفون نصب کنید.
+            3. **🌐 وب‌اپلیکیشن رایگان (PWA)**:
+               - نیازی به دانلود فایل نیست؛ کافیست لینک **GitHub Pages** مخزن را در **Safari** آیفون باز کرده و گزینه **Add to Home Screen** را بزنید.
+
+            ---
+            <sub>کامپایل‌شده با GitHub Actions • ساخت ۱۰۰٪ خودکار</sub>
+          files: |
+            release-files/*.apk
+            release-files/*.ipa
