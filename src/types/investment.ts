@@ -78,4 +78,12 @@ export interface AppBackupData {
   marketHoldings?: UserMarketHolding[];
 }
 
-export type ActiveTab = 'calculator' | 'holdings' | 'market' | 'settings' | 'history';
+export type ActiveTab =
+  | 'dashboard'
+  | 'gold'
+  | 'crypto'
+  | 'holdings'
+  | 'settings'
+  | 'history'
+  | 'calculator'
+  | 'market';

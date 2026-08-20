@@ -1,5 +1,5 @@
 import React from 'react';
-import { Calculator, Wallet, Sliders, History, TrendingUp } from 'lucide-react';
+import { LayoutDashboard, Coins, TrendingUp, Wallet, Sliders } from 'lucide-react';
 import { ActiveTab } from '../../types/investment';
 import { triggerHaptic } from '../../utils/haptics';
 
@@ -10,11 +10,11 @@ interface BottomNavProps {
 
 export const BottomNav: React.FC<BottomNavProps> = ({ activeTab, setActiveTab }) => {
   const tabs: { id: ActiveTab; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
-    { id: 'calculator', label: 'محاسبه خرید', icon: Calculator },
-    { id: 'market', label: 'بورس و طلا', icon: TrendingUp },
+    { id: 'dashboard', label: 'داشبورد', icon: LayoutDashboard },
+    { id: 'gold', label: 'بورس و طلا', icon: Coins },
+    { id: 'crypto', label: 'ارز دیجیتال', icon: TrendingUp },
     { id: 'holdings', label: 'دارایی‌ها', icon: Wallet },
     { id: 'settings', label: 'تنظیمات', icon: Sliders },
-    { id: 'history', label: 'سوابق', icon: History },
   ];
 
   const handleTabClick = (id: ActiveTab) => {
@@ -27,7 +27,10 @@ export const BottomNav: React.FC<BottomNavProps> = ({ activeTab, setActiveTab })
       <nav className="max-w-lg mx-auto bg-slate-950/90 dark:bg-slate-950/95 light:bg-white/95 backdrop-blur-3xl border border-slate-800/90 dark:border-slate-800/90 light:border-slate-300 rounded-3xl shadow-2xl p-1.5 flex items-center justify-around pointer-events-auto">
         {tabs.map((tab) => {
           const Icon = tab.icon;
-          const isActive = activeTab === tab.id;
+          const isActive =
+            activeTab === tab.id ||
+            (tab.id === 'gold' && (activeTab as string) === 'market') ||
+            (tab.id === 'dashboard' && (activeTab as string) === 'calculator');
 
           return (
             <button
