@@ -1,53 +1,88 @@
-import React, { useState } from 'react';
-import { Sparkles, Copy, Check, Scale } from 'lucide-react';
-import { GoldHolding } from '../../types/investment';
-import { formatToman, toPersianDigits } from '../../utils/formatters';
+import React, { useState, useEffect } from 'react';
+import { Sparkles, Copy, Check, TrendingUp, Layers, ChevronDown } from 'lucide-react';
+import { useMarketData } from '../../hooks/useMarketData';
+import { formatToman, formatPercent, toPersianDigits } from '../../utils/formatters';
 import { triggerHaptic } from '../../utils/haptics';
+import { MarketInstrument, MarketQuote } from '../../services/marketData/types';
 
 interface GoldBuyCardProps {
   goldBuyAmount: number;
-  goldHolding: GoldHolding;
   goldPercent: number;
 }
 
+// Built-in popular TSETMC Gold Funds for immediate selection if user hasn't added one yet
+const DEFAULT_GOLD_ETFS: { symbol: string; name: string; insCode: string }[] = [
+  { symbol: 'عیار', name: 'صندوق س. پشتوانه طلای لوتوس', insCode: '65883838195688438' },
+  { symbol: 'طلا', name: 'صندوق س. پشتوانه طلای زرافشان', insCode: '26656708390708948' },
+  { symbol: 'کهربا', name: 'صندوق س. طلا کهربا', insCode: '35700344742885862' },
+  { symbol: 'زر', name: 'صندوق س. زرین آگاه', insCode: '58774780517865203' },
+  { symbol: 'گوهر', name: 'صندوق س. گوهر نفیس', insCode: '31388527814418318' },
+];
+
 export const GoldBuyCard: React.FC<GoldBuyCardProps> = ({
   goldBuyAmount,
-  goldHolding,
   goldPercent,
 }) => {
-  const [copiedAmount, setCopiedAmount] = useState(false);
-  const [copiedWeight, setCopiedWeight] = useState(false);
+  const { instruments, quotes, refreshQuotes } = useMarketData();
 
-  const pricePerGram = goldHolding.pricePerGram || 5200000;
-  const calculatedGrams = pricePerGram > 0 ? goldBuyAmount / pricePerGram : 0;
-  const calculatedSoots = Math.round(calculatedGrams * 1000);
+  // Find all gold ETFs available in user holdings or defaults
+  const userGoldInstruments = instruments.filter(
+    (i) =>
+      i.assetType === 'etf' ||
+      i.symbol.includes('عیار') ||
+      i.symbol.includes('طلا') ||
+      i.symbol.includes('کهربا') ||
+      i.symbol.includes('زر')
+  );
+
+  const availableGoldList = userGoldInstruments.length > 0
+    ? userGoldInstruments
+    : DEFAULT_GOLD_ETFS.map((g) => ({
+        id: `default_${g.symbol}`,
+        provider: 'tsetmc' as const,
+        providerInstrumentId: g.insCode,
+        symbol: g.symbol,
+        name: g.name,
+        assetType: 'etf' as const,
+        createdAt: '',
+        updatedAt: '',
+      }));
+
+  const [selectedSymbol, setSelectedSymbol] = useState<string>(
+    availableGoldList[0]?.symbol || 'عیار'
+  );
+  const [copiedAmount, setCopiedAmount] = useState(false);
+  const [copiedUnits, setCopiedUnits] = useState(false);
+
+  const currentInstrument = availableGoldList.find((g) => g.symbol === selectedSymbol) || availableGoldList[0];
+  const quote: MarketQuote | undefined = currentInstrument ? quotes[currentInstrument.id] : undefined;
+
+  // Fallback price if quote not loaded yet (e.g. 35,000 Tomans)
+  const unitPriceTomans = quote && quote.lastPriceTomans > 0 ? quote.lastPriceTomans : 35000;
+  const unitsToBuy = unitPriceTomans > 0 ? Math.floor(goldBuyAmount / unitPriceTomans) : 0;
+  const exactBuyValue = unitsToBuy * unitPriceTomans;
 
   const handleCopyAmount = () => {
     triggerHaptic('success');
-    navigator.clipboard.writeText(String(goldBuyAmount));
+    navigator.clipboard.writeText(String(exactBuyValue > 0 ? exactBuyValue : goldBuyAmount));
     setCopiedAmount(true);
     setTimeout(() => setCopiedAmount(false), 2000);
   };
 
-  const handleCopyWeight = () => {
+  const handleCopyUnits = () => {
     triggerHaptic('success');
-    navigator.clipboard.writeText(calculatedGrams.toFixed(3));
-    setCopiedWeight(true);
-    setTimeout(() => setCopiedWeight(false), 2000);
+    navigator.clipboard.writeText(String(unitsToBuy));
+    setCopiedUnits(true);
+    setTimeout(() => setCopiedUnits(false), 2000);
   };
 
   return (
-    <div className="p-4 sm:p-6 rounded-3xl bg-gradient-to-br from-amber-950/40 via-slate-900 to-slate-950 border border-gold-500/40 shadow-gold-glow relative overflow-hidden">
+    <div className="p-4 sm:p-6 rounded-3xl bg-gradient-to-br from-amber-950/30 via-slate-900 to-slate-950 border border-gold-500/40 shadow-lg relative overflow-hidden space-y-4">
       
-      {/* Decorative Gold Ingot Background glow */}
-      <div className="absolute -left-8 -bottom-8 w-40 h-40 opacity-15 pointer-events-none text-gold-400">
-        <Sparkles className="w-full h-full" />
-      </div>
-
       {/* Header */}
-      <div className="flex items-center justify-between gap-3 mb-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800/80 pb-3.5">
         <div className="flex items-center gap-3">
-          <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-amber-400 via-gold-500 to-yellow-600 p-[2px] shadow-gold-glow">
+          <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-amber-400 via-gold-500 to-yellow-600 p-[2px]">
             <div className="w-full h-full bg-slate-950 rounded-[14px] flex items-center justify-center text-xl">
               🥇
             </div>
@@ -55,38 +90,62 @@ export const GoldBuyCard: React.FC<GoldBuyCardProps> = ({
           <div>
             <div className="flex items-center gap-2">
               <h3 className="text-base font-black text-slate-100">
-                خرید پیشنهادی <span className="gold-gradient-text">طلا و آبشده</span>
+                خرید پیشنهادی <span className="gold-gradient-text">صندوق طلای بورس (TSETMC)</span>
               </h3>
               <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/20 text-gold-300 border border-gold-500/30 font-bold">
                 {toPersianDigits(goldPercent)}٪ سهم پس‌انداز
               </span>
             </div>
             <p className="text-[11px] text-slate-400 mt-0.5">
-              مبنا: هر گرم ۱۸ عیار = {formatToman(pricePerGram)} تومان
+              محاسبه زنده بر اساس نرخ تابلو بورس تهران (صندوق منتخب: {selectedSymbol})
             </p>
           </div>
+        </div>
+
+        {/* Gold ETF Selector Chips */}
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0">
+          <span className="text-[11px] text-slate-400 font-medium ml-1">صندوق طلا:</span>
+          {availableGoldList.map((etf) => (
+            <button
+              key={etf.symbol}
+              onClick={() => {
+                triggerHaptic('light');
+                setSelectedSymbol(etf.symbol);
+              }}
+              className={`px-2.5 py-1 rounded-xl text-xs font-bold transition-all interactive-tap ${
+                selectedSymbol === etf.symbol
+                  ? 'bg-amber-500/30 text-gold-300 border border-gold-500/50'
+                  : 'bg-slate-900 text-slate-400 hover:text-slate-200 border border-slate-800'
+              }`}
+            >
+              {etf.symbol}
+            </button>
+          ))}
         </div>
       </div>
 
       {/* Main Amounts Display */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3.5">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         
         {/* Toman Value Box */}
         <div className="p-4 rounded-2xl bg-slate-950/90 border border-amber-500/30 flex items-center justify-between">
           <div>
             <div className="text-[11px] font-medium text-slate-400 mb-1">
-              مبلغ خرید به تومان
+              مبلغ کل خرید طلا به تومان
             </div>
             <div className="text-xl sm:text-2xl font-black text-gold-400 dir-ltr">
               {formatToman(goldBuyAmount)}{' '}
               <span className="text-xs font-bold text-slate-400">تومان</span>
             </div>
+            <span className="text-[10px] text-slate-500 block mt-0.5 dir-ltr">
+              نرخ واحد: {formatToman(unitPriceTomans)} ت ({new Intl.NumberFormat('en-US').format(unitPriceTomans * 10)} ریال)
+            </span>
           </div>
           <button
             onClick={handleCopyAmount}
             className={`p-3 rounded-2xl border transition-all interactive-tap touch-target ${
               copiedAmount
-                ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/50 shadow-emerald-glow'
+                ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/50'
                 : 'bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-gold-400 border-slate-700/80'
             }`}
             title="کپی مبلغ به تومان"
@@ -99,28 +158,31 @@ export const GoldBuyCard: React.FC<GoldBuyCardProps> = ({
           </button>
         </div>
 
-        {/* Grams & Soots Box */}
+        {/* Calculated Units Box */}
         <div className="p-4 rounded-2xl bg-slate-950/90 border border-amber-500/30 flex items-center justify-between">
           <div>
             <div className="text-[11px] font-medium text-slate-400 mb-1 flex items-center gap-1">
-              <Scale className="w-3.5 h-3.5 text-gold-400" />
-              <span>وزن معادل تقریبی</span>
+              <Layers className="w-3.5 h-3.5 text-gold-400" />
+              <span>تعداد واحد / برگه قابل سفارش در کارگزاری</span>
             </div>
             <div className="text-xl sm:text-2xl font-black text-slate-100 dir-ltr">
-              {toPersianDigits(calculatedGrams.toFixed(3))}{' '}
-              <span className="text-xs font-bold text-slate-400">گرم ({toPersianDigits(calculatedSoots)} سوت)</span>
+              {toPersianDigits(new Intl.NumberFormat('en-US').format(unitsToBuy))}{' '}
+              <span className="text-xs font-bold text-gold-400">واحد {selectedSymbol}</span>
             </div>
+            <span className="text-[10px] text-slate-400 block mt-0.5">
+              مبلغ دقیق سفارش: {formatToman(exactBuyValue)} تومان
+            </span>
           </div>
           <button
-            onClick={handleCopyWeight}
+            onClick={handleCopyUnits}
             className={`p-3 rounded-2xl border transition-all interactive-tap touch-target ${
-              copiedWeight
-                ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/50 shadow-emerald-glow'
+              copiedUnits
+                ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/50'
                 : 'bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-gold-400 border-slate-700/80'
             }`}
-            title="کپی وزن به گرم"
+            title="کپی تعداد واحد جهت ثبت در کارگزاری"
           >
-            {copiedWeight ? (
+            {copiedUnits ? (
               <Check className="w-4 h-4 text-emerald-400" />
             ) : (
               <Copy className="w-4 h-4" />
@@ -130,12 +192,23 @@ export const GoldBuyCard: React.FC<GoldBuyCardProps> = ({
 
       </div>
 
-      {/* Tip footer */}
-      <div className="text-[11px] text-slate-300 bg-amber-500/10 p-3 rounded-2xl border border-amber-500/20 flex items-center gap-2">
-        <Sparkles className="w-4 h-4 text-gold-400 shrink-0" />
-        <span className="leading-relaxed">
-          پیشنهاد: طلای آبشده کم‌اجرت یا سکه‌های پارسیان و گرمی جهت حفظ کامل ارزش دارایی و کاهش کارمزد.
-        </span>
+      {/* TSETMC Live Tip Footer */}
+      <div className="text-[11px] text-slate-300 bg-amber-500/10 p-3 rounded-2xl border border-amber-500/20 flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <TrendingUp className="w-4 h-4 text-gold-400 shrink-0" />
+          <span className="leading-relaxed">
+            کافیست در ایزی‌تریدر، مفید یا کارگزاری خود نماد <strong>{selectedSymbol}</strong> را سرچ کرده و <strong>{toPersianDigits(unitsToBuy)} واحد</strong> با مبلغ <strong>{formatToman(exactBuyValue)} تومان</strong> سفارش خرید ثبت کنید.
+          </span>
+        </div>
+        {quote && (
+          <span
+            className={`text-xs font-black dir-ltr shrink-0 ${
+              quote.priceChangePercent >= 0 ? 'text-emerald-400' : 'text-rose-400'
+            }`}
+          >
+            {quote.priceChangePercent >= 0 ? '+' : ''}{formatPercent(quote.priceChangePercent)}
+          </span>
+        )}
       </div>
 
     </div>

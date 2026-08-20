@@ -20,7 +20,6 @@ export default {
           800: '#854d0e',
           900: '#713f12',
           metallic: '#D4AF37',
-          glow: '#FFD700',
         },
         crypto: {
           btc: '#F7931A',
@@ -44,11 +43,6 @@ export default {
       },
       fontFamily: {
         vazir: ['Vazirmatn', 'sans-serif'],
-      },
-      boxShadow: {
-        'gold-glow': '0 0 25px -5px rgba(212, 175, 55, 0.3)',
-        'crypto-glow': '0 0 25px -5px rgba(98, 126, 234, 0.25)',
-        'emerald-glow': '0 0 25px -5px rgba(16, 185, 129, 0.25)',
       },
       animation: {
         'pulse-subtle': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',

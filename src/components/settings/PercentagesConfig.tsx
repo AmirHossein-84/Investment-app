@@ -3,12 +3,14 @@ import { Percent, Scale, RefreshCw, Layers, CheckCircle2 } from 'lucide-react';
 import { AppSettings, CryptoAsset } from '../../types/investment';
 import { formatPercent, toPersianDigits } from '../../utils/formatters';
 import { triggerHaptic } from '../../utils/haptics';
+import { NobitexIntegrationCard } from '../crypto/NobitexIntegrationCard';
 
 interface PercentagesConfigProps {
   settings: AppSettings;
   updateSettings: (settings: Partial<AppSettings>) => void;
   cryptoAssets: CryptoAsset[];
   updateCryptoAssets: (assets: CryptoAsset[]) => void;
+  onNotify?: (message: string, type?: 'success' | 'info' | 'error') => void;
 }
 
 export const PercentagesConfig: React.FC<PercentagesConfigProps> = ({
@@ -16,6 +18,7 @@ export const PercentagesConfig: React.FC<PercentagesConfigProps> = ({
   updateSettings,
   cryptoAssets,
   updateCryptoAssets,
+  onNotify,
 }) => {
   const totalCryptoTargetSum = cryptoAssets.reduce((sum, a) => sum + (a.targetPercent || 0), 0);
   const isCryptoSum100 = Math.abs(totalCryptoTargetSum - 100) < 0.1;
@@ -51,7 +54,7 @@ export const PercentagesConfig: React.FC<PercentagesConfigProps> = ({
       <div className="glass-card p-4 sm:p-6 border border-slate-800 space-y-3.5">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-2xl bg-emerald-500/15 text-emerald-400 flex items-center justify-center shadow-emerald-glow">
+            <div className="w-9 h-9 rounded-2xl bg-emerald-500/15 text-emerald-400 flex items-center justify-center">
               <Percent className="w-4 h-4" />
             </div>
             <div>
@@ -90,7 +93,7 @@ export const PercentagesConfig: React.FC<PercentagesConfigProps> = ({
       <div className="glass-card p-4 sm:p-6 border border-slate-800 space-y-3.5">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-2xl bg-amber-500/15 text-gold-400 flex items-center justify-center shadow-gold-glow">
+            <div className="w-9 h-9 rounded-2xl bg-amber-500/15 text-gold-400 flex items-center justify-center">
               <Scale className="w-4 h-4" />
             </div>
             <div>
@@ -139,7 +142,14 @@ export const PercentagesConfig: React.FC<PercentagesConfigProps> = ({
         </div>
       </div>
 
-      {/* 3. CALCULATION ENGINE MODE */}
+      {/* 3. NOBITEX API AUTO-SYNC CARD */}
+      <NobitexIntegrationCard
+        cryptoAssets={cryptoAssets}
+        onAssetsUpdated={updateCryptoAssets}
+        onNotify={onNotify}
+      />
+
+      {/* 4. CALCULATION ENGINE MODE */}
       <div className="glass-card p-4 sm:p-6 border border-slate-800 space-y-3.5">
         <div>
           <h3 className="text-sm sm:text-base font-black text-slate-100 mb-1">
@@ -159,7 +169,7 @@ export const PercentagesConfig: React.FC<PercentagesConfigProps> = ({
             }}
             className={`p-4 rounded-3xl border transition-all interactive-tap ${
               settings.calculationMode === 'rebalance'
-                ? 'bg-amber-500/15 border-gold-500/50 shadow-gold-glow'
+                ? 'bg-amber-500/15 border-gold-500/50'
                 : 'bg-slate-950/70 border-slate-800 hover:border-slate-700'
             }`}
           >
@@ -187,7 +197,7 @@ export const PercentagesConfig: React.FC<PercentagesConfigProps> = ({
             }}
             className={`p-4 rounded-3xl border transition-all interactive-tap ${
               settings.calculationMode === 'direct'
-                ? 'bg-indigo-500/15 border-indigo-500/50 shadow-crypto-glow'
+                ? 'bg-indigo-500/15 border-indigo-500/50'
                 : 'bg-slate-950/70 border-slate-800 hover:border-slate-700'
             }`}
           >
@@ -209,7 +219,7 @@ export const PercentagesConfig: React.FC<PercentagesConfigProps> = ({
         </div>
       </div>
 
-      {/* 4. INDIVIDUAL CRYPTO WEIGHTS CONFIG */}
+      {/* 5. INDIVIDUAL CRYPTO WEIGHTS CONFIG */}
       <div className="glass-card p-4 sm:p-6 border border-slate-800 space-y-3.5">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-3">
           <div>

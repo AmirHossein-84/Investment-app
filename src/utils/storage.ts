@@ -1,5 +1,13 @@
-import { AppSettings, CryptoAsset, GoldHolding, TransactionRecord } from '../types/investment';
+import {
+  AppSettings,
+  CryptoAsset,
+  GoldHolding,
+  TransactionRecord,
+  MarketInstrument,
+  UserMarketHolding,
+} from '../types/investment';
 import { DEFAULT_CRYPTO_ASSETS, DEFAULT_GOLD_HOLDING, DEFAULT_SETTINGS } from '../constants/defaultData';
+import { NobitexConfig } from '../services/nobitex/types';
 
 const STORAGE_KEYS = {
   SETTINGS: 'investment_app_settings_v1',
@@ -7,6 +15,9 @@ const STORAGE_KEYS = {
   GOLD_HOLDING: 'investment_app_gold_holding_v1',
   TRANSACTIONS: 'investment_app_transactions_v1',
   LAST_INPUT: 'investment_app_last_input_v1',
+  MARKET_INSTRUMENTS: 'investment_app_market_instruments_v1',
+  MARKET_HOLDINGS: 'investment_app_market_holdings_v1',
+  NOBITEX_CONFIG: 'investment_app_nobitex_config_v1',
 };
 
 export interface ExportedBackupData {
@@ -16,6 +27,9 @@ export interface ExportedBackupData {
   cryptoAssets: CryptoAsset[];
   goldHolding: GoldHolding;
   transactions: TransactionRecord[];
+  marketInstruments?: MarketInstrument[];
+  marketHoldings?: UserMarketHolding[];
+  nobitexConfig?: NobitexConfig;
 }
 
 export function loadSettings(): AppSettings {
@@ -107,14 +121,79 @@ export function saveLastInput(amount: number): void {
   }
 }
 
+// -------------------------------------------------------------
+// TSETMC MARKET INSTRUMENTS & USER HOLDINGS PERSISTENCE
+// -------------------------------------------------------------
+
+export function loadMarketInstruments(): MarketInstrument[] {
+  try {
+    const data = localStorage.getItem(STORAGE_KEYS.MARKET_INSTRUMENTS);
+    return data ? JSON.parse(data) : [];
+  } catch (e) {
+    console.error('Failed to load market instruments:', e);
+    return [];
+  }
+}
+
+export function saveMarketInstruments(instruments: MarketInstrument[]): void {
+  try {
+    localStorage.setItem(STORAGE_KEYS.MARKET_INSTRUMENTS, JSON.stringify(instruments));
+  } catch (e) {
+    console.error('Failed to save market instruments:', e);
+  }
+}
+
+export function loadMarketHoldings(): UserMarketHolding[] {
+  try {
+    const data = localStorage.getItem(STORAGE_KEYS.MARKET_HOLDINGS);
+    return data ? JSON.parse(data) : [];
+  } catch (e) {
+    console.error('Failed to load market holdings:', e);
+    return [];
+  }
+}
+
+export function saveMarketHoldings(holdings: UserMarketHolding[]): void {
+  try {
+    localStorage.setItem(STORAGE_KEYS.MARKET_HOLDINGS, JSON.stringify(holdings));
+  } catch (e) {
+    console.error('Failed to save market holdings:', e);
+  }
+}
+
+// -------------------------------------------------------------
+// NOBITEX API CONFIG PERSISTENCE
+// -------------------------------------------------------------
+
+export function loadNobitexConfig(): NobitexConfig {
+  try {
+    const data = localStorage.getItem(STORAGE_KEYS.NOBITEX_CONFIG);
+    return data ? JSON.parse(data) : { authType: 'api_key', publicKey: '', secretKey: '' };
+  } catch (e) {
+    console.error('Failed to load Nobitex config:', e);
+    return { authType: 'api_key', publicKey: '', secretKey: '' };
+  }
+}
+
+export function saveNobitexConfig(config: NobitexConfig): void {
+  try {
+    localStorage.setItem(STORAGE_KEYS.NOBITEX_CONFIG, JSON.stringify(config));
+  } catch (e) {
+    console.error('Failed to save Nobitex config:', e);
+  }
+}
+
 export function exportBackupData(): string {
   const backup: ExportedBackupData = {
-    version: '1.0.0',
+    version: '1.2.0',
     exportDate: new Date().toISOString(),
     settings: loadSettings(),
     cryptoAssets: loadCryptoAssets(),
     goldHolding: loadGoldHolding(),
     transactions: loadTransactions(),
+    marketInstruments: loadMarketInstruments(),
+    marketHoldings: loadMarketHoldings(),
+    nobitexConfig: loadNobitexConfig(),
   };
   return JSON.stringify(backup, null, 2);
 }
@@ -129,6 +208,9 @@ export function importBackupData(jsonString: string): boolean {
     saveCryptoAssets(parsed.cryptoAssets);
     if (parsed.goldHolding) saveGoldHolding(parsed.goldHolding);
     if (parsed.transactions) saveTransactions(parsed.transactions);
+    if (Array.isArray(parsed.marketInstruments)) saveMarketInstruments(parsed.marketInstruments);
+    if (Array.isArray(parsed.marketHoldings)) saveMarketHoldings(parsed.marketHoldings);
+    if (parsed.nobitexConfig) saveNobitexConfig(parsed.nobitexConfig);
     return true;
   } catch (e) {
     console.error('Failed to import backup:', e);
@@ -142,4 +224,7 @@ export function resetAllDataToDefault(): void {
   localStorage.removeItem(STORAGE_KEYS.GOLD_HOLDING);
   localStorage.removeItem(STORAGE_KEYS.TRANSACTIONS);
   localStorage.removeItem(STORAGE_KEYS.LAST_INPUT);
+  localStorage.removeItem(STORAGE_KEYS.MARKET_INSTRUMENTS);
+  localStorage.removeItem(STORAGE_KEYS.MARKET_HOLDINGS);
+  localStorage.removeItem(STORAGE_KEYS.NOBITEX_CONFIG);
 }

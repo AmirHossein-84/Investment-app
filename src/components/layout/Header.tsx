@@ -1,25 +1,19 @@
 import React from 'react';
-import { Sun, Moon, Shield, Smartphone } from 'lucide-react';
+import { Sun, Moon, Shield } from 'lucide-react';
 import { getPersianFormattedDate } from '../../utils/formatters';
 import { triggerHaptic } from '../../utils/haptics';
 
 interface HeaderProps {
   isDark: boolean;
   toggleTheme: () => void;
-  onOpenInstallModal: () => void;
 }
 
-export const Header: React.FC<HeaderProps> = ({ isDark, toggleTheme, onOpenInstallModal }) => {
+export const Header: React.FC<HeaderProps> = ({ isDark, toggleTheme }) => {
   const todayPersian = getPersianFormattedDate(new Date()).split('ساعت')[0];
 
   const handleToggleTheme = () => {
     triggerHaptic('medium');
     toggleTheme();
-  };
-
-  const handleOpenInstall = () => {
-    triggerHaptic('light');
-    onOpenInstallModal();
   };
 
   return (
@@ -28,7 +22,7 @@ export const Header: React.FC<HeaderProps> = ({ isDark, toggleTheme, onOpenInsta
         
         {/* Brand & Logo */}
         <div className="flex items-center gap-3">
-          <div className="relative w-10 h-10 rounded-2xl bg-gradient-to-tr from-amber-500 via-gold-400 to-yellow-300 p-[2px] shadow-gold-glow">
+          <div className="relative w-10 h-10 rounded-2xl bg-gradient-to-tr from-amber-500 via-gold-400 to-yellow-300 p-[2px]">
             <div className="w-full h-full bg-slate-950 rounded-[14px] flex items-center justify-center">
               <Shield className="w-5 h-5 text-gold-400" />
             </div>
@@ -43,9 +37,6 @@ export const Header: React.FC<HeaderProps> = ({ isDark, toggleTheme, onOpenInsta
               <h1 className="text-base font-black tracking-tight text-slate-100 dark:text-slate-100 light:text-slate-900">
                 مدیریت سبد <span className="gold-gradient-text">طلا و کریپتو</span>
               </h1>
-              <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-amber-500/15 text-gold-400 border border-gold-500/30 font-bold">
-                PWA
-              </span>
             </div>
             <p className="text-[11px] text-slate-400 dark:text-slate-400 light:text-slate-500">
               {todayPersian}
@@ -53,18 +44,8 @@ export const Header: React.FC<HeaderProps> = ({ isDark, toggleTheme, onOpenInsta
           </div>
         </div>
 
-        {/* Action buttons */}
+        {/* Action button */}
         <div className="flex items-center gap-2">
-          {/* Install App Button */}
-          <button
-            onClick={handleOpenInstall}
-            className="flex items-center gap-1.5 text-xs px-3 py-2 rounded-2xl bg-gradient-to-r from-amber-500/15 to-yellow-500/10 hover:from-amber-500/25 hover:to-yellow-500/20 border border-gold-500/40 text-gold-300 transition-all interactive-tap touch-target"
-            title="راهنمای نصب برنامه روی گوشی"
-          >
-            <Smartphone className="w-4 h-4 text-gold-400" />
-            <span className="font-bold text-[11px]">نصب برنامه</span>
-          </button>
-
           {/* Theme Toggle Button */}
           <button
             onClick={handleToggleTheme}

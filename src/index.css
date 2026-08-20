@@ -41,11 +41,11 @@
 
 @layer components {
   .glass-card {
-    @apply bg-slate-900/80 dark:bg-slate-900/80 backdrop-blur-2xl border border-slate-800/90 shadow-2xl rounded-3xl transition-all duration-200;
+    @apply bg-slate-900/80 dark:bg-slate-900/80 backdrop-blur-2xl border border-slate-800/90 shadow-lg rounded-3xl transition-all duration-200;
   }
   
   .glass-card-light {
-    @apply bg-white/95 backdrop-blur-2xl border border-slate-200/90 shadow-xl rounded-3xl transition-all duration-200 text-slate-900;
+    @apply bg-white/95 backdrop-blur-2xl border border-slate-200/90 shadow-md rounded-3xl transition-all duration-200 text-slate-900;
   }
 
   .gold-gradient-text {
@@ -53,7 +53,7 @@
   }
 
   .gold-gradient-bg {
-    @apply bg-gradient-to-r from-amber-400 via-gold-400 to-yellow-500 text-slate-950 font-bold shadow-gold-glow;
+    @apply bg-gradient-to-r from-amber-400 via-gold-400 to-yellow-500 text-slate-950 font-bold;
   }
 
   .crypto-gradient-text {

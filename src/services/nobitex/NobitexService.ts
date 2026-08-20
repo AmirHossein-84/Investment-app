@@ -1,0 +1,294 @@
+import { CryptoAsset } from '../../types/investment';
+import { NobitexWallet, NobitexMarketStat, NobitexProfile, NobitexConfig } from './types';
+import { signNobitexRequest } from './nobitexSigner';
+
+// Map popular symbols to Persian labels and colors
+const COIN_METADATA: Record<string, { name: string; color: string; targetPercent: number }> = {
+  btc: { name: 'بیت‌کوین', color: '#F7931A', targetPercent: 25 },
+  eth: { name: 'اتریوم', color: '#627EEA', targetPercent: 25 },
+  sol: { name: 'سولانا', color: '#14F195', targetPercent: 20 },
+  ton: { name: 'تون‌کوین', color: '#0088CC', targetPercent: 15 },
+  bnb: { name: 'بایننس‌کوین', color: '#F3BA2F', targetPercent: 15 },
+  ada: { name: 'کاردانو', color: '#0033AD', targetPercent: 10 },
+  dot: { name: 'پولکادات', color: '#E6007A', targetPercent: 10 },
+  xrp: { name: 'ریپل', color: '#23292F', targetPercent: 10 },
+  doge: { name: 'دوج‌کوین', color: '#C2A633', targetPercent: 10 },
+  trx: { name: 'ترون', color: '#FF0013', targetPercent: 10 },
+  pol: { name: 'پالیگان', color: '#8247E5', targetPercent: 10 },
+  avax: { name: 'آوالانچ', color: '#E84142', targetPercent: 10 },
+  link: { name: 'چین‌لینک', color: '#375BD2', targetPercent: 10 },
+  near: { name: 'نیر پروتکل', color: '#000000', targetPercent: 10 },
+  sui: { name: 'سویی', color: '#2A82E4', targetPercent: 10 },
+  apt: { name: 'آپتوس', color: '#2EE5AC', targetPercent: 10 },
+  usdt: { name: 'تتر', color: '#26A17B', targetPercent: 10 },
+};
+
+class NobitexService {
+  private getBaseUrl(): string {
+    // In browser dev on localhost, use the vite proxy to bypass CORS; in APK or standalone direct
+    if (typeof window !== 'undefined' && window.location.hostname === 'localhost') {
+      return '/api/nobitex';
+    }
+    return 'https://apiv2.nobitex.ir';
+  }
+
+  private async getRequestHeaders(params: {
+    config: NobitexConfig;
+    method: 'GET' | 'POST' | 'DELETE' | 'PUT';
+    path: string;
+    body?: string;
+  }): Promise<Record<string, string>> {
+    const { config, method, path, body } = params;
+
+    if (config.authType === 'api_key' && config.publicKey && config.secretKey) {
+      return signNobitexRequest({
+        publicKey: config.publicKey,
+        secretKey: config.secretKey,
+        method,
+        path,
+        body,
+      });
+    }
+
+    // Token authentication
+    const token = config.token || config.publicKey || '';
+    return {
+      'Authorization': `Token ${token.trim()}`,
+      'User-Agent': 'TraderBot/InvestmentApp-1.0.0',
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+    };
+  }
+
+  /**
+   * Fetch User Profile to test API Key / Token validity
+   */
+  async getProfile(config: NobitexConfig): Promise<NobitexProfile> {
+    const base = this.getBaseUrl();
+    const path = '/users/profile';
+    const url = `${base}${path}`;
+
+    const headers = await this.getRequestHeaders({
+      config,
+      method: 'GET',
+      path,
+    });
+
+    const res = await fetch(url, {
+      method: 'GET',
+      headers,
+    });
+
+    if (!res.ok) {
+      if (res.status === 401 || res.status === 403) {
+        throw new Error('کلید API یا توکن نوبیتکس نامعتبر است، منقضی شده یا دسترسی READ ندارد.');
+      }
+      if (res.status === 429) {
+        throw new Error('محدودیت درخواست‌های نوبیتکس (Rate Limit). لطفاً چند لحظه بعد تلاش کنید.');
+      }
+      throw new Error(`خطا در ارتباط با نوبیتکس: کد ${res.status}`);
+    }
+
+    const data = await res.json();
+    if (data.status === 'failed') {
+      throw new Error(data.message || 'خطا در دریافت مشخصات کاربر نوبیتکس');
+    }
+
+    return data.profile || data;
+  }
+
+  /**
+   * Fetch User Wallets List
+   */
+  async getWallets(config: NobitexConfig): Promise<NobitexWallet[]> {
+    const base = this.getBaseUrl();
+    const path = '/users/wallets/list';
+    const url = `${base}${path}`;
+    const bodyStr = '{}';
+
+    const headers = await this.getRequestHeaders({
+      config,
+      method: 'POST',
+      path,
+      body: bodyStr,
+    });
+
+    const res = await fetch(url, {
+      method: 'POST',
+      headers,
+      body: bodyStr,
+    });
+
+    if (!res.ok) {
+      if (res.status === 401 || res.status === 403) {
+        throw new Error('کلید API نوبیتکس نامعتبر است یا دسترسی READ ندارد.');
+      }
+      if (res.status === 429) {
+        throw new Error('محدودیت تعداد درخواست نوبیتکس (Rate Limit). لطفاً چند لحظه بعد تلاش کنید.');
+      }
+      throw new Error(`خطا در دریافت کیف‌پول‌ها: کد ${res.status}`);
+    }
+
+    const data = await res.json();
+    if (data.status === 'failed') {
+      throw new Error(data.message || 'خطا در دریافت لیست کیف‌پول‌های نوبیتکس');
+    }
+
+    return data.wallets || [];
+  }
+
+  /**
+   * Fetch Market Stats (Latest Prices in Rials/Tomans)
+   */
+  async getMarketStats(
+    srcCurrencies?: string[],
+    dstCurrency: 'rls' | 'usdt' = 'rls'
+  ): Promise<Record<string, NobitexMarketStat>> {
+    const base = this.getBaseUrl();
+    const params = new URLSearchParams();
+    if (srcCurrencies && srcCurrencies.length > 0) {
+      params.append('srcCurrency', srcCurrencies.join(',').toLowerCase());
+    }
+    params.append('dstCurrency', dstCurrency);
+
+    const url = `${base}/market/stats?${params.toString()}`;
+
+    const res = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'User-Agent': 'TraderBot/InvestmentApp-1.0.0',
+        'Accept': 'application/json',
+      },
+    });
+
+    if (!res.ok) {
+      throw new Error(`خطا در دریافت نرخ‌های بازار نوبیتکس: کد ${res.status}`);
+    }
+
+    const data = await res.json();
+    if (data.status === 'failed') {
+      throw new Error(data.message || 'خطا در دریافت آمار بازار نوبیتکس');
+    }
+
+    return data.stats || {};
+  }
+
+  /**
+   * Full Synchronizer:
+   * 1. Pulls user's wallets from Nobitex
+   * 2. Pulls real-time prices in Tomans (Rials / 10)
+   * 3. Maps to CryptoAsset objects with accurate coin quantity and Tomans valuation
+   */
+  async syncUserCryptoHoldings(
+    config: NobitexConfig,
+    existingAssets: CryptoAsset[]
+  ): Promise<{
+    updatedAssets: CryptoAsset[];
+    syncedCount: number;
+    tomanBalance: number;
+    profile?: NobitexProfile;
+  }> {
+    // 1. Fetch Wallets & Profile in parallel (with graceful fallback for profile)
+    const [wallets, profile] = await Promise.all([
+      this.getWallets(config),
+      this.getProfile(config).catch(() => undefined),
+    ]);
+
+    // 2. Extract active crypto balances (exclude zero balances and rls)
+    const cryptoWallets = wallets.filter(
+      (w) => w.currency.toLowerCase() !== 'rls' && parseFloat(w.balance || '0') > 0
+    );
+
+    // Extract Rials wallet (cash on exchange)
+    const rlsWallet = wallets.find((w) => w.currency.toLowerCase() === 'rls');
+    const tomanBalance = rlsWallet ? Math.round(parseFloat(rlsWallet.balance || '0') / 10) : 0;
+
+    // 3. Fetch Market Prices for all coins (existing + newly found in wallet)
+    const allSymbols = new Set<string>();
+    existingAssets.forEach((a) => allSymbols.add(a.symbol.toLowerCase()));
+    cryptoWallets.forEach((w) => allSymbols.add(w.currency.toLowerCase()));
+
+    const symbolList = Array.from(allSymbols);
+    const stats = await this.getMarketStats(symbolList, 'rls');
+
+    // Tether price in Rials to convert any USDT-only rates if needed
+    const usdtPriceRials = stats['usdt-rls']?.latest ? parseFloat(stats['usdt-rls'].latest) : 900000;
+    const usdtPriceTomans = Math.round(usdtPriceRials / 10);
+
+    // 4. Update or merge assets
+    const updatedAssets: CryptoAsset[] = [];
+    const processedSymbols = new Set<string>();
+
+    // Update existing assets first
+    for (const asset of existingAssets) {
+      const sym = asset.symbol.toLowerCase();
+      processedSymbols.add(sym);
+
+      const wallet = cryptoWallets.find((w) => w.currency.toLowerCase() === sym);
+      const statKey = `${sym}-rls`;
+      const stat = stats[statKey];
+
+      let unitPriceTomans = asset.unitPrice || 0;
+      if (stat && stat.latest) {
+        unitPriceTomans = Math.round(parseFloat(stat.latest) / 10);
+      } else if (sym === 'usdt') {
+        unitPriceTomans = usdtPriceTomans;
+      }
+
+      const coinAmount = wallet ? parseFloat(wallet.balance) : asset.currentAmount || 0;
+      const holdingValue = unitPriceTomans > 0 ? Math.round(coinAmount * unitPriceTomans) : asset.currentHoldingValue;
+
+      updatedAssets.push({
+        ...asset,
+        currentAmount: coinAmount,
+        unitPrice: unitPriceTomans,
+        currentHoldingValue: holdingValue,
+      });
+    }
+
+    // Add newly discovered assets from Nobitex wallets that weren't in user's list
+    for (const wallet of cryptoWallets) {
+      const sym = wallet.currency.toLowerCase();
+      if (processedSymbols.has(sym)) continue;
+      processedSymbols.add(sym);
+
+      const statKey = `${sym}-rls`;
+      const stat = stats[statKey];
+
+      let unitPriceTomans = 0;
+      if (stat && stat.latest) {
+        unitPriceTomans = Math.round(parseFloat(stat.latest) / 10);
+      } else if (sym === 'usdt') {
+        unitPriceTomans = usdtPriceTomans;
+      }
+
+      const coinAmount = parseFloat(wallet.balance);
+      const holdingValue = unitPriceTomans > 0 ? Math.round(coinAmount * unitPriceTomans) : 0;
+      const meta = COIN_METADATA[sym] || {
+        name: sym.toUpperCase(),
+        color: '#6366F1',
+        targetPercent: 10,
+      };
+
+      updatedAssets.push({
+        id: `nobitex_${sym}_${Date.now()}`,
+        symbol: sym.toUpperCase(),
+        name: meta.name,
+        targetPercent: meta.targetPercent,
+        currentAmount: coinAmount,
+        unitPrice: unitPriceTomans,
+        currentHoldingValue: holdingValue,
+        color: meta.color,
+      });
+    }
+
+    return {
+      updatedAssets,
+      syncedCount: cryptoWallets.length,
+      tomanBalance,
+      profile,
+    };
+  }
+}
+
+export const nobitexService = new NobitexService();

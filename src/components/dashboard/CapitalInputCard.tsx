@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Coins, ArrowDownRight, RefreshCw, Layers, Plus, RotateCcw } from 'lucide-react';
+import { Coins, ArrowDownRight, RefreshCw, Layers, RotateCcw } from 'lucide-react';
 import { AppSettings } from '../../types/investment';
 import { formatToman, formatPercent, parseNumberInput, toPersianDigits } from '../../utils/formatters';
 import { triggerHaptic } from '../../utils/haptics';
@@ -55,15 +55,11 @@ export const CapitalInputCard: React.FC<CapitalInputCardProps> = ({
 
   return (
     <div className="glass-card p-4 sm:p-6 border border-slate-800/90 relative overflow-hidden">
-      
-      {/* Background ambient gold & crypto glow */}
-      <div className="absolute -top-12 -right-12 w-44 h-44 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
-      <div className="absolute -bottom-12 -left-12 w-44 h-44 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
 
       {/* Card Header & Mode Switcher */}
       <div className="flex items-center justify-between gap-2 mb-3.5">
         <div className="flex items-center gap-2.5">
-          <div className="w-9 h-9 rounded-2xl bg-amber-500/15 border border-gold-500/30 flex items-center justify-center text-gold-400 shadow-gold-glow">
+          <div className="w-9 h-9 rounded-2xl bg-amber-500/15 border border-gold-500/30 flex items-center justify-center text-gold-400">
             <Coins className="w-4 h-4" />
           </div>
           <div>
@@ -81,8 +77,8 @@ export const CapitalInputCard: React.FC<CapitalInputCardProps> = ({
           onClick={toggleCalculationMode}
           className={`px-3 py-1.5 rounded-2xl text-[11px] font-bold flex items-center gap-1.5 transition-all interactive-tap touch-target border ${
             settings.calculationMode === 'rebalance'
-              ? 'bg-amber-500/15 text-gold-300 border-gold-500/40 shadow-sm'
-              : 'bg-indigo-500/15 text-indigo-300 border-indigo-500/40 shadow-sm'
+              ? 'bg-amber-500/15 text-gold-300 border-gold-500/40'
+              : 'bg-indigo-500/15 text-indigo-300 border-indigo-500/40'
           }`}
           title="تغییر حالت محاسبه"
         >
@@ -108,7 +104,7 @@ export const CapitalInputCard: React.FC<CapitalInputCardProps> = ({
           value={displayValue}
           onChange={handleInputChange}
           placeholder="مثلاً ۳۰,۰۰۰,۰۰۰"
-          className="w-full bg-slate-950/80 border border-slate-700/80 rounded-2xl px-4 py-3.5 sm:py-4 text-left dir-ltr text-xl sm:text-2xl font-black text-slate-100 placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-gold-500/50 focus:border-gold-400 transition-all shadow-inner"
+          className="w-full bg-slate-950/80 border border-slate-700/80 rounded-2xl px-4 py-3.5 sm:py-4 text-left dir-ltr text-xl sm:text-2xl font-black text-slate-100 placeholder:text-slate-600 focus:outline-none focus:ring-1 focus:ring-gold-500/50 focus:border-gold-400 transition-all shadow-inner"
         />
         <div className="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400 pointer-events-none">
           تومان
@@ -144,7 +140,7 @@ export const CapitalInputCard: React.FC<CapitalInputCardProps> = ({
         {/* Total Savings Header */}
         <div className="flex items-center justify-between border-b border-slate-800/80 pb-2.5">
           <div className="flex items-center gap-2">
-            <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 shadow-emerald-glow" />
+            <span className="w-2.5 h-2.5 rounded-full bg-emerald-400" />
             <span className="text-xs sm:text-sm font-bold text-slate-200">
               کل پس‌انداز ({formatPercent(settings.savingsPercent)} سرمایه):
             </span>

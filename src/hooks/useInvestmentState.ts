@@ -32,7 +32,12 @@ import {
 } from '../utils/storage';
 import { getPersianFormattedDate } from '../utils/formatters';
 
-export function useInvestmentState() {
+interface UseInvestmentStateProps {
+  externalGoldValueTomans?: number;
+  onApplyGoldPurchase?: (goldBuyAmountTomans: number) => void;
+}
+
+export function useInvestmentState(props?: UseInvestmentStateProps) {
   const [activeTab, setActiveTab] = useState<ActiveTab>('calculator');
   const [inputAmount, setInputAmountState] = useState<number>(() => loadLastInput());
   const [settings, setSettingsState] = useState<AppSettings>(() => loadSettings());
@@ -70,12 +75,6 @@ export function useInvestmentState() {
   const updateGoldHolding = useCallback((newGold: Partial<GoldHolding>) => {
     setGoldHoldingState((prev) => {
       const updated = { ...prev, ...newGold };
-      // Sync grams if pricePerGram is known
-      if (newGold.currentGrams !== undefined && updated.pricePerGram) {
-        updated.currentHoldingValue = Math.round(newGold.currentGrams * updated.pricePerGram);
-      } else if (newGold.currentHoldingValue !== undefined && updated.pricePerGram && updated.pricePerGram > 0) {
-        updated.currentGrams = Number((newGold.currentHoldingValue / updated.pricePerGram).toFixed(3));
-      }
       saveGoldHolding(updated);
       return updated;
     });
@@ -123,10 +122,21 @@ export function useInvestmentState() {
     });
   }, [showNotification]);
 
-  // Main calculation result
+  // Use live TSETMC gold valuation if available, otherwise fallback to local gold holding
+  const effectiveGoldHolding: GoldHolding = useMemo(() => {
+    if (props?.externalGoldValueTomans !== undefined && props.externalGoldValueTomans > 0) {
+      return {
+        ...goldHolding,
+        currentHoldingValue: props.externalGoldValueTomans,
+      };
+    }
+    return goldHolding;
+  }, [props?.externalGoldValueTomans, goldHolding]);
+
+  // Main portfolio rebalancing calculation result
   const calculationResult = useMemo(() => {
-    return calculatePortfolioAllocation(inputAmount, settings, cryptoAssets, goldHolding);
-  }, [inputAmount, settings, cryptoAssets, goldHolding]);
+    return calculatePortfolioAllocation(inputAmount, settings, cryptoAssets, effectiveGoldHolding);
+  }, [inputAmount, settings, cryptoAssets, effectiveGoldHolding]);
 
   // Apply suggested purchases into current holdings
   const applyPurchasesToHoldings = useCallback(() => {
@@ -135,18 +145,19 @@ export function useInvestmentState() {
       return;
     }
 
-    // 1. Update Gold holding
-    setGoldHoldingState((prevGold) => {
-      const updatedGold: GoldHolding = {
-        ...prevGold,
-        currentHoldingValue: (prevGold.currentHoldingValue || 0) + calculationResult.goldBuyAmount,
-      };
-      if (updatedGold.pricePerGram && updatedGold.pricePerGram > 0) {
-        updatedGold.currentGrams = Number((updatedGold.currentHoldingValue / updatedGold.pricePerGram).toFixed(3));
-      }
-      saveGoldHolding(updatedGold);
-      return updatedGold;
-    });
+    // 1. Update Gold holding / Trigger TSETMC gold holding increment
+    if (props?.onApplyGoldPurchase && calculationResult.goldBuyAmount > 0) {
+      props.onApplyGoldPurchase(calculationResult.goldBuyAmount);
+    } else {
+      setGoldHoldingState((prevGold) => {
+        const updatedGold: GoldHolding = {
+          ...prevGold,
+          currentHoldingValue: (prevGold.currentHoldingValue || 0) + calculationResult.goldBuyAmount,
+        };
+        saveGoldHolding(updatedGold);
+        return updatedGold;
+      });
+    }
 
     // 2. Update Crypto assets holdings
     setCryptoAssetsState((prevAssets) => {
@@ -199,7 +210,7 @@ export function useInvestmentState() {
     }
 
     showNotification('خریدهای پیشنهادی با موفقیت به دارایی‌های شما اضافه شد!');
-  }, [calculationResult, showNotification]);
+  }, [calculationResult, props, showNotification]);
 
   const deleteTransaction = useCallback((id: string) => {
     setTransactionsState((prev) => {
@@ -263,7 +274,7 @@ export function useInvestmentState() {
     addCryptoAsset,
     editCryptoAsset,
     removeCryptoAsset,
-    goldHolding,
+    goldHolding: effectiveGoldHolding,
     updateGoldHolding,
     transactions,
     deleteTransaction,
@@ -274,5 +285,6 @@ export function useInvestmentState() {
     handleExportBackup,
     handleImportBackup,
     notification,
+    showNotification,
   };
 }

@@ -1,3 +1,7 @@
+import { MarketInstrument, UserMarketHolding, MarketQuote, MarketStatus } from '../services/marketData/types';
+
+export * from '../services/marketData/types';
+
 export interface CryptoAsset {
   id: string;
   name: string;
@@ -63,4 +67,15 @@ export interface TransactionRecord {
   appliedToHoldings: boolean;
 }
 
-export type ActiveTab = 'calculator' | 'holdings' | 'settings' | 'history';
+export interface AppBackupData {
+  version: number;
+  exportDate: string;
+  cryptoAssets: CryptoAsset[];
+  goldHolding: GoldHolding;
+  settings: AppSettings;
+  transactions: TransactionRecord[];
+  marketInstruments?: MarketInstrument[];
+  marketHoldings?: UserMarketHolding[];
+}
+
+export type ActiveTab = 'calculator' | 'holdings' | 'market' | 'settings' | 'history';

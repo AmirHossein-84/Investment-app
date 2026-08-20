@@ -31,6 +31,7 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg,json}'],
+        navigateFallbackDenylist: [/^\/api\//],
         runtimeCaching: [
           {
             urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
@@ -66,6 +67,27 @@ export default defineConfig({
   ],
   server: {
     port: 3000,
-    host: true
+    host: true,
+    proxy: {
+      '/api/tsetmc': {
+        target: 'https://cdn.tsetmc.com/api',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api\/tsetmc/, ''),
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+          'Referer': 'https://tsetmc.com/',
+          'Accept': 'application/json, text/plain, */*',
+        }
+      },
+      '/api/nobitex': {
+        target: 'https://apiv2.nobitex.ir',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api\/nobitex/, ''),
+        headers: {
+          'User-Agent': 'TraderBot/InvestmentApp-1.0.0',
+          'Accept': 'application/json, text/plain, */*',
+        }
+      }
+    }
   }
 });

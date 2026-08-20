@@ -1,15 +1,16 @@
-import React, { useState } from 'react';
+import React, { useCallback } from 'react';
 import { useInvestmentState } from './hooks/useInvestmentState';
+import { useMarketData } from './hooks/useMarketData';
 import { useTheme } from './hooks/useTheme';
 import { Header } from './components/layout/Header';
 import { BottomNav } from './components/layout/BottomNav';
-import { PwaInstallPrompt } from './components/layout/PwaInstallPrompt';
 import { CapitalInputCard } from './components/dashboard/CapitalInputCard';
 import { OverviewSummary } from './components/dashboard/OverviewSummary';
 import { AllocationCharts } from './components/dashboard/AllocationCharts';
 import { GoldBuyCard } from './components/calculation/GoldBuyCard';
 import { CryptoBuyTable } from './components/calculation/CryptoBuyTable';
 import { QuickActions } from './components/calculation/QuickActions';
+import { MarketInstrumentsView } from './components/market/MarketInstrumentsView';
 import { HoldingsManager } from './components/holdings/HoldingsManager';
 import { PercentagesConfig } from './components/settings/PercentagesConfig';
 import { BackupRestore } from './components/settings/BackupRestore';
@@ -18,7 +19,31 @@ import { CheckCircle, Info, AlertCircle } from 'lucide-react';
 
 export const App: React.FC = () => {
   const { isDark, toggleTheme } = useTheme();
-  const [isInstallModalOpen, setIsInstallModalOpen] = useState(false);
+
+  const {
+    totalGoldMarketValueTomans,
+    totalMarketValueTomans,
+    instruments,
+    quotes,
+    addUnitsToGoldInstrument,
+  } = useMarketData();
+
+  // Handler to automatically add purchased TSETMC Gold units to user holdings
+  const handleApplyGoldPurchase = useCallback(
+    (goldBuyAmountTomans: number) => {
+      // Find user gold instrument or default to Ayar
+      const primaryGold = instruments.find((i) => i.symbol === 'عیار') || instruments[0];
+      const symbol = primaryGold?.symbol || 'عیار';
+      const quote = primaryGold ? quotes[primaryGold.id] : undefined;
+      const unitPrice = quote && quote.lastPriceTomans > 0 ? quote.lastPriceTomans : 35000;
+      const unitsToBuy = Math.floor(goldBuyAmountTomans / unitPrice);
+
+      if (unitsToBuy > 0) {
+        addUnitsToGoldInstrument(symbol, unitsToBuy, unitPrice);
+      }
+    },
+    [instruments, quotes, addUnitsToGoldInstrument]
+  );
 
   const {
     activeTab,
@@ -33,7 +58,6 @@ export const App: React.FC = () => {
     editCryptoAsset,
     removeCryptoAsset,
     goldHolding,
-    updateGoldHolding,
     transactions,
     deleteTransaction,
     clearAllHistory,
@@ -43,7 +67,11 @@ export const App: React.FC = () => {
     handleExportBackup,
     handleImportBackup,
     notification,
-  } = useInvestmentState();
+    showNotification,
+  } = useInvestmentState({
+    externalGoldValueTomans: totalGoldMarketValueTomans,
+    onApplyGoldPurchase: handleApplyGoldPurchase,
+  });
 
   return (
     <div className="min-h-screen bg-slate-950 dark:bg-dark-bg text-slate-100 selection:bg-gold-500/30 selection:text-gold-200 pb-24 transition-colors">
@@ -52,7 +80,6 @@ export const App: React.FC = () => {
       <Header
         isDark={isDark}
         toggleTheme={toggleTheme}
-        onOpenInstallModal={() => setIsInstallModalOpen(true)}
       />
 
       {/* Main Container */}
@@ -65,6 +92,7 @@ export const App: React.FC = () => {
             <OverviewSummary
               cryptoAssets={cryptoAssets}
               goldHolding={goldHolding}
+              marketValueTomans={totalMarketValueTomans}
             />
 
             {/* Capital Input Card */}
@@ -81,10 +109,9 @@ export const App: React.FC = () => {
             {/* Calculations Breakdown (Only when input is provided) */}
             {calculationResult.totalSavingsAmount > 0 ? (
               <>
-                {/* Gold Purchase Card */}
+                {/* Gold Purchase Card (TSETMC Gold ETF powered) */}
                 <GoldBuyCard
                   goldBuyAmount={calculationResult.goldBuyAmount}
-                  goldHolding={goldHolding}
                   goldPercent={settings.goldPercent}
                 />
 
@@ -116,29 +143,37 @@ export const App: React.FC = () => {
                   برای مشاهده جدول خریدهای پیشنهادی، مبلغ سرمایه ورودی را در بالا وارد کنید
                 </h3>
                 <p className="text-xs text-slate-500 max-w-md mx-auto">
-                  برنامه به صورت خودکار ۳۰٪ پس‌انداز، ۸۰٪ طلا، ۲۰٪ رمزارزها و بازتنظیم سبد را محاسبه خواهد کرد.
+                  برنامه به صورت خودکار ۳۰٪ پس‌انداز، ۸۰٪ صندوق طلای بورس و ۲۰٪ رمزارزها را با توازن موجودی قبلی شما محاسبه خواهد کرد.
                 </p>
               </div>
             )}
           </div>
         )}
 
-        {/* TAB 2: HOLDINGS MANAGEMENT */}
+        {/* TAB 2: TSETMC MARKET & GOLD INSTRUMENTS */}
+        {activeTab === 'market' && (
+          <div className="animate-fadeIn">
+            <MarketInstrumentsView />
+          </div>
+        )}
+
+        {/* TAB 3: HOLDINGS MANAGEMENT */}
         {activeTab === 'holdings' && (
           <div className="animate-fadeIn">
             <HoldingsManager
               cryptoAssets={cryptoAssets}
-              goldHolding={goldHolding}
-              updateGoldHolding={updateGoldHolding}
+              updateCryptoAssets={updateCryptoAssets}
               addCryptoAsset={addCryptoAsset}
               editCryptoAsset={editCryptoAsset}
               removeCryptoAsset={removeCryptoAsset}
               onNavigateToCalculator={() => setActiveTab('calculator')}
+              onNavigateToMarket={() => setActiveTab('market')}
+              onNotify={showNotification}
             />
           </div>
         )}
 
-        {/* TAB 3: SETTINGS & CUSTOMIZATION */}
+        {/* TAB 4: SETTINGS & CUSTOMIZATION */}
         {activeTab === 'settings' && (
           <div className="space-y-5 animate-fadeIn">
             <PercentagesConfig
@@ -146,6 +181,7 @@ export const App: React.FC = () => {
               updateSettings={updateSettings}
               cryptoAssets={cryptoAssets}
               updateCryptoAssets={updateCryptoAssets}
+              onNotify={showNotification}
             />
 
             <BackupRestore
@@ -156,7 +192,7 @@ export const App: React.FC = () => {
           </div>
         )}
 
-        {/* TAB 4: TRANSACTION HISTORY */}
+        {/* TAB 5: TRANSACTION HISTORY */}
         {activeTab === 'history' && (
           <div className="animate-fadeIn">
             <TransactionHistory
@@ -171,12 +207,6 @@ export const App: React.FC = () => {
 
       {/* Floating Bottom Navigation */}
       <BottomNav activeTab={activeTab} setActiveTab={setActiveTab} />
-
-      {/* PWA Install Modal */}
-      <PwaInstallPrompt
-        isOpen={isInstallModalOpen}
-        onClose={() => setIsInstallModalOpen(false)}
-      />
 
       {/* Toast Notification Snackbar */}
       {notification && (
