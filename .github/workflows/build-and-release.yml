@@ -157,26 +157,30 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tag_name: v1.0.${{ github.run_number }}
-          name: "📱 نسخه آماده نصب ${{ github.run_number }} (Android APK & iOS IPA)"
+          name: "📱 نسخه آماده نصب 1.0.${{ github.run_number }} (Android APK & iOS IPA)"
           draft: false
           prerelease: false
           body: |
-            ## 🌟 نسخه نصبی اپلیکیشن مدیریت سبد سرمایه‌گذاری طلا و ارزهای دیجیتال
+            <div dir="rtl">
 
-            این فایل‌ها به صورت خودکار توسط **GitHub Actions** کامپایل شده‌اند:
+            ## 🌟 نسخه نصبی ۱.۰.${{ github.run_number }} اپلیکیشن مدیریت سرمایه
 
-            ### 📥 فایل‌های قابل دانلود:
+            این نسخه به صورت خودکار توسط **GitHub Actions** کامپایل و آماده‌سازی شده است:
+
+            ### 📥 فایل‌های قابل دانلود در بخش Assets (پایین صفحه):
             1. **🤖 اندروید (Android APK)**:
                - فایل: **`Investment-App-v1.0.${{ github.run_number }}.apk`**
                - نحوه نصب: مستقیم روی گوشی اندروید دانلود و لمس کنید تا نصب شود.
             2. **🍏 آیفون (iOS IPA)**:
                - فایل: **`Investment-App-v1.0.${{ github.run_number }}.ipa`**
-               - نحوه نصب: دانلود کرده و با نرم‌افزارهای رایگان **Sideloadly** یا **AltStore** یا **SideStore** روی آیفون نصب کنید.
-            3. **🌐 وب‌اپلیکیشن رایگان (PWA)**:
-               - نیازی به دانلود فایل نیست؛ کافیست لینک وب‌اپلیکیشن در Vercel (**[investment-app-mu-five.vercel.app](https://investment-app-mu-five.vercel.app/)**) را در **Safari** آیفون باز کرده و گزینه **Add to Home Screen** را بزنید.
+               - نحوه نصب: فایل IPA را دانلود کرده و با نرم‌افزارهای رایگان **Sideloadly** یا **AltStore** یا **SideStore** روی آیفون نصب کنید.
+            3. **🌐 وب‌اپلیکیشن بدون نیاز به نصب (PWA)**:
+               - نیازی به دانلود فایل نیست؛ کافیست لینک وب‌اپلیکیشن در ورسل (**[investment-app-mu-five.vercel.app](https://investment-app-mu-five.vercel.app/)**) را در مرورگر **Safari** آیفون باز کرده و گزینه **Add to Home Screen** را بزنید.
 
             ---
-            <sub>کامپایل‌شده با GitHub Actions • ساخت ۱۰۰٪ خودکار</sub>
+            <sub>ساخت خودکار با GitHub Actions • نسخه ۱.۰.${{ github.run_number }}</sub>
+
+            </div>
           files: |
             release-files/*.apk
             release-files/*.ipa
