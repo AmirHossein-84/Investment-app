@@ -1,4 +1,4 @@
-name: Multi-Platform Build, Release & GitHub Pages Deployment
+name: Multi-Platform Build & Auto Release (Android APK & iOS IPA)
 
 on:
   push:
@@ -9,12 +9,6 @@ on:
 
 permissions:
   contents: write
-  pages: write
-  id-token: write
-
-concurrency:
-  group: "pages"
-  cancel-in-progress: false
 
 jobs:
   # ========================================================
@@ -125,45 +119,7 @@ jobs:
           if-no-files-found: error
 
   # ========================================================
-  # JOB 3: Deploy to Free GitHub Pages (Safari 1-Tap PWA)
-  # ========================================================
-  deploy-pages:
-    name: 🌐 Deploy to Free GitHub Pages
-    runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: 'npm'
-
-      - name: Install dependencies
-        run: npm install
-
-      - name: Build Web App
-        run: npm run build
-
-      - name: Setup Pages
-        uses: actions/configure-pages@v5
-
-      - name: Upload Pages Artifact
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: 'dist'
-
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
-
-  # ========================================================
-  # JOB 4: Create GitHub Release with APK & IPA
+  # JOB 3: Create GitHub Release with APK & IPA
   # ========================================================
   release:
     name: 📦 Publish GitHub Release
@@ -214,7 +170,7 @@ jobs:
                - فایل: **`Investment-App-v1.0.${{ github.run_number }}.ipa`**
                - نحوه نصب: دانلود کرده و با نرم‌افزارهای رایگان **Sideloadly** یا **AltStore** یا **SideStore** روی آیفون نصب کنید.
             3. **🌐 وب‌اپلیکیشن رایگان (PWA)**:
-               - نیازی به دانلود فایل نیست؛ کافیست لینک وب‌اپلیکیشن (Vercel یا GitHub Pages) را در **Safari** آیفون باز کرده و گزینه **Add to Home Screen** را بزنید.
+               - نیازی به دانلود فایل نیست؛ کافیست لینک وب‌اپلیکیشن در Vercel (**[investment-app-mu-five.vercel.app](https://investment-app-mu-five.vercel.app/)**) را در **Safari** آیفون باز کرده و گزینه **Add to Home Screen** را بزنید.
 
             ---
             <sub>کامپایل‌شده با GitHub Actions • ساخت ۱۰۰٪ خودکار</sub>
