@@ -1,0 +1,30 @@
+{
+  "short_name": "مدیریت سرمایه",
+  "name": "مدیریت سبد سرمایه‌گذاری طلا و کریپتو",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "type": "image/png",
+      "sizes": "192x192"
+    },
+    {
+      "src": "/icon-512.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon.svg",
+      "type": "image/svg+xml",
+      "sizes": "any"
+    }
+  ],
+  "start_url": "/",
+  "background_color": "#0B0F17",
+  "theme_color": "#D4AF37",
+  "display": "standalone",
+  "orientation": "portrait",
+  "dir": "rtl",
+  "lang": "fa-IR",
+  "description": "برنامه هوشمند محاسبه تخصیص پس‌انداز و خرید طلا و ارزهای دیجیتال با بازتنظیم سبد"
+}
