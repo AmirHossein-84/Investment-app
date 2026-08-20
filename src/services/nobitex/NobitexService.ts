@@ -1,3 +1,4 @@
+import { Capacitor } from '@capacitor/core';
 import { CryptoAsset } from '../../types/investment';
 import { NobitexWallet, NobitexMarketStat, NobitexProfile, NobitexConfig } from './types';
 import { signNobitexRequest } from './nobitexSigner';
@@ -25,11 +26,12 @@ const COIN_METADATA: Record<string, { name: string; color: string; targetPercent
 
 class NobitexService {
   private getBaseUrl(): string {
-    // In browser dev on localhost, use the vite proxy to bypass CORS; in APK or standalone direct
-    if (typeof window !== 'undefined' && window.location.hostname === 'localhost') {
-      return '/api/nobitex';
+    // In native mobile apps (Capacitor Android / iOS), call direct
+    if (typeof window !== 'undefined' && Capacitor.isNativePlatform()) {
+      return 'https://apiv2.nobitex.ir';
     }
-    return 'https://apiv2.nobitex.ir';
+    // In web browsers (localhost dev or Vercel production), use same-origin proxy to bypass CORS
+    return '/api/nobitex';
   }
 
   private async getRequestHeaders(params: {

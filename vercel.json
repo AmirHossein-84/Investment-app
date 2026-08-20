@@ -1,6 +1,14 @@
 {
   "rewrites": [
     {
+      "source": "/api/nobitex/:path*",
+      "destination": "https://apiv2.nobitex.ir/:path*"
+    },
+    {
+      "source": "/api/tsetmc/:path*",
+      "destination": "https://cdn.tsetmc.com/api/:path*"
+    },
+    {
       "source": "/(.*)",
       "destination": "/index.html"
     }
