@@ -1,4 +1,5 @@
 import React, { useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 import { triggerHaptic } from '../../utils/haptics';
 
@@ -36,7 +37,7 @@ export const BottomSheetModal: React.FC<BottomSheetModalProps> = ({
     };
   }, [isOpen]);
 
-  if (!isOpen) return null;
+  if (!isOpen || typeof document === 'undefined') return null;
 
   const handleBackdropClick = (e: React.MouseEvent) => {
     if (e.target === e.currentTarget) {
@@ -69,21 +70,22 @@ export const BottomSheetModal: React.FC<BottomSheetModalProps> = ({
     currentTranslateYRef.current = 0;
   };
 
-  return (
+  const modalContent = (
     <div
       onClick={handleBackdropClick}
-      className="fixed inset-0 z-50 bg-black/75 backdrop-blur-md flex items-end sm:items-center justify-center p-0 sm:p-4 animate-fadeIn"
+      className="fixed inset-0 z-[9999] bg-black/80 backdrop-blur-md flex items-end sm:items-center justify-center p-0 sm:p-4 animate-fadeIn"
     >
       <div
         ref={sheetRef}
-        className={`w-full ${maxWidth} bg-slate-950/95 border-t sm:border border-slate-800 rounded-t-3xl sm:rounded-3xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col transition-transform duration-200 ease-out`}
+        onClick={(e) => e.stopPropagation()}
+        className={`w-full ${maxWidth} bg-slate-950 border-t sm:border border-slate-800 rounded-t-3xl sm:rounded-3xl shadow-2xl overflow-hidden max-h-[88vh] max-h-[88dvh] flex flex-col transition-transform duration-200 ease-out`}
       >
         {/* Mobile Drag Handle */}
         <div
           onTouchStart={handleTouchStart}
           onTouchMove={handleTouchMove}
           onTouchEnd={handleTouchEnd}
-          className="w-full flex flex-col items-center pt-3 pb-1 cursor-grab active:cursor-grabbing sm:hidden"
+          className="w-full flex flex-col items-center pt-3 pb-1 cursor-grab active:cursor-grabbing sm:hidden shrink-0"
         >
           <div className="w-12 h-1.5 rounded-full bg-slate-700/80" />
         </div>
@@ -117,10 +119,12 @@ export const BottomSheetModal: React.FC<BottomSheetModalProps> = ({
         </div>
 
         {/* Modal Body Content */}
-        <div className="p-5 overflow-y-auto overscroll-contain flex-1 space-y-4 pb-[max(1.5rem,env(safe-area-inset-bottom))]">
+        <div className="p-5 overflow-y-auto overscroll-contain flex-1 space-y-4 pb-[max(2rem,env(safe-area-inset-bottom))]">
           {children}
         </div>
       </div>
     </div>
   );
+
+  return createPortal(modalContent, document.body);
 };

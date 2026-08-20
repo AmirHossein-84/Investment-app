@@ -270,8 +270,8 @@ export const NobitexSyncModal: React.FC<NobitexSyncModalProps> = ({
           </div>
         )}
 
-        {/* Bottom Actions */}
-        <div className="pt-2 flex items-center justify-between gap-3">
+        {/* Bottom Actions - Sticky Footer */}
+        <div className="sticky bottom-0 bg-slate-950/95 backdrop-blur-md pt-3 pb-1 border-t border-slate-800/80 -mx-5 px-5 flex items-center justify-between gap-3 z-10">
           {isConfigured ? (
             <button
               onClick={handleDisconnect}
