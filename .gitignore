@@ -1,6 +1,45 @@
-node_modules
-dist
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Build Outputs
+dist/
+dist-ssr/
+*.local
+build/
+
+# Android build outputs
+android/app/build/
+android/build/
+android/.gradle/
+android/local.properties
+android/captures/
+*.apk
+*.aab
+
+# Logs and debug files
 *.log
 *.har
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# OS and Editor metadata
 .DS_Store
 Thumbs.db
+.idea/
+.vscode/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Environment Variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
