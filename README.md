@@ -4,9 +4,9 @@
 ### ترکیب طلای بورسی (۸۰٪) و ارزهای دیجیتال (۲۰٪)
 
 <p align="center">
-  <img src="https://img.shields.io/badge/نسخه-۱.۰.۰-gold?style=for-the-badge&logo=appveyor" alt="Version">
-  <img src="https://img.shields.io/badge/پلتفرم-Android%20%7C%20iOS%20%7C%20PWA-indigo?style=for-the-badge" alt="Platform">
-  <img src="https://img.shields.io/badge/امنیت-۱۰۰٪%20آفلاین%20و%20محلی-emerald?style=for-the-badge" alt="Security">
+  <img src="https://img.shields.io/badge/Version-v1.0.0-gold?style=for-the-badge&logo=appveyor" alt="Version">
+  <img src="https://img.shields.io/badge/Platform-Android%20%7C%20iOS%20%7C%20PWA-indigo?style=for-the-badge" alt="Platform">
+  <img src="https://img.shields.io/badge/Security-100%25%20Offline%20%26%20Local-emerald?style=for-the-badge" alt="Security">
 </p>
 
 <p align="center">
