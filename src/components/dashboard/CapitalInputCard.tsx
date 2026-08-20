@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
-import { Coins, ArrowDownRight, RefreshCw, Layers, RotateCcw } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Coins, TrendingUp, Sparkles, RotateCcw, Wallet } from 'lucide-react';
 import { AppSettings } from '../../types/investment';
 import { formatToman, formatPercent, parseNumberInput, toPersianDigits } from '../../utils/formatters';
+import { numberToPersianWords } from '../../utils/numberToPersianWords';
 import { triggerHaptic } from '../../utils/haptics';
 
 interface CapitalInputCardProps {
@@ -27,6 +28,10 @@ export const CapitalInputCard: React.FC<CapitalInputCardProps> = ({
     inputAmount > 0 ? new Intl.NumberFormat('en-US').format(inputAmount) : ''
   );
 
+  useEffect(() => {
+    setDisplayValue(inputAmount > 0 ? new Intl.NumberFormat('en-US').format(inputAmount) : '');
+  }, [inputAmount]);
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const raw = e.target.value;
     const parsed = parseNumberInput(raw);
@@ -38,146 +43,134 @@ export const CapitalInputCard: React.FC<CapitalInputCardProps> = ({
     triggerHaptic('light');
     const newVal = (inputAmount || 0) + addAmount;
     setInputAmount(newVal);
-    setDisplayValue(new Intl.NumberFormat('en-US').format(newVal));
   };
 
-  const handleSetExact = (val: number) => {
-    triggerHaptic('light');
-    setInputAmount(val);
-    setDisplayValue(val > 0 ? new Intl.NumberFormat('en-US').format(val) : '');
-  };
-
-  const toggleCalculationMode = () => {
+  const handleClear = () => {
     triggerHaptic('medium');
-    const nextMode = settings.calculationMode === 'rebalance' ? 'direct' : 'rebalance';
-    updateSettings({ calculationMode: nextMode });
+    setInputAmount(0);
   };
+
+  const persianWords = inputAmount > 0 ? numberToPersianWords(inputAmount, 'تومان') : '';
 
   return (
-    <div className="glass-card p-4 sm:p-6 border border-slate-800/90 relative overflow-hidden">
-
-      {/* Card Header & Mode Switcher */}
-      <div className="flex items-center justify-between gap-2 mb-3.5">
+    <div className="glass-card p-5 sm:p-6 border border-slate-800 space-y-4 relative overflow-hidden">
+      
+      {/* Card Header */}
+      <div className="flex items-center justify-between">
         <div className="flex items-center gap-2.5">
-          <div className="w-9 h-9 rounded-2xl bg-amber-500/15 border border-gold-500/30 flex items-center justify-center text-gold-400">
-            <Coins className="w-4 h-4" />
+          <div className="w-8 h-8 rounded-xl bg-gold-500/15 text-gold-400 border border-gold-500/30 flex items-center justify-center font-bold text-sm">
+            <Sparkles className="w-4 h-4" />
           </div>
           <div>
-            <h2 className="text-sm sm:text-base font-bold text-slate-100 dark:text-slate-100">
-              سرمایه یا درآمد جدید
-            </h2>
+            <h3 className="text-sm font-black text-slate-100">
+              سرمایه ورودی جدید (محاسبه تخصیص پس‌انداز)
+            </h3>
             <p className="text-[11px] text-slate-400">
-              محاسبه پس‌انداز {formatPercent(settings.savingsPercent)}
+              محاسبه هوشمند سهم طلا ({toPersianDigits(settings.goldPercent)}%) و کریپتو ({toPersianDigits(settings.cryptoPercent)}%)
             </p>
           </div>
         </div>
 
-        {/* Calculation Mode Badge / Switch */}
-        <button
-          onClick={toggleCalculationMode}
-          className={`px-3 py-1.5 rounded-2xl text-[11px] font-bold flex items-center gap-1.5 transition-all interactive-tap touch-target border ${
-            settings.calculationMode === 'rebalance'
-              ? 'bg-amber-500/15 text-gold-300 border-gold-500/40'
-              : 'bg-indigo-500/15 text-indigo-300 border-indigo-500/40'
-          }`}
-          title="تغییر حالت محاسبه"
-        >
-          {settings.calculationMode === 'rebalance' ? (
-            <>
-              <RefreshCw className="w-3.5 h-3.5 text-gold-400" />
-              <span>توازن هوشمند سبد</span>
-            </>
-          ) : (
-            <>
-              <Layers className="w-3.5 h-3.5 text-indigo-400" />
-              <span>تقسیم مستقیم</span>
-            </>
-          )}
-        </button>
-      </div>
-
-      {/* Main Input Field */}
-      <div className="relative mb-3">
-        <input
-          type="text"
-          inputMode="numeric"
-          value={displayValue}
-          onChange={handleInputChange}
-          placeholder="مثلاً ۳۰,۰۰۰,۰۰۰"
-          className="w-full bg-slate-950/80 border border-slate-700/80 rounded-2xl px-4 py-3.5 sm:py-4 text-left dir-ltr text-xl sm:text-2xl font-black text-slate-100 placeholder:text-slate-600 focus:outline-none focus:ring-1 focus:ring-gold-500/50 focus:border-gold-400 transition-all shadow-inner"
-        />
-        <div className="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400 pointer-events-none">
-          تومان
-        </div>
-      </div>
-
-      {/* Quick Add & Preset Steppers */}
-      <div className="flex flex-wrap items-center gap-1.5 mb-4">
-        <span className="text-[11px] text-slate-400 ml-1">افزودن سریع:</span>
-        {[1000000, 5000000, 10000000, 20000000, 50000000].map((val) => (
-          <button
-            key={val}
-            onClick={() => handleQuickAdd(val)}
-            className="px-2.5 py-1.5 text-[11px] font-bold rounded-xl bg-slate-800/80 hover:bg-slate-700 text-slate-200 border border-slate-700/60 transition-all interactive-tap"
-          >
-            +{toPersianDigits(val / 1000000)} م
-          </button>
-        ))}
         {inputAmount > 0 && (
           <button
-            onClick={() => handleSetExact(0)}
-            className="px-2.5 py-1.5 text-[11px] font-bold rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 transition-all interactive-tap mr-auto flex items-center gap-1"
+            onClick={handleClear}
+            className="p-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-rose-400 border border-slate-800 transition-all text-[11px] flex items-center gap-1 touch-target"
+            title="پاک کردن مبلغ"
           >
-            <RotateCcw className="w-3 h-3" />
-            <span>پاک کردن</span>
+            <RotateCcw className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">پاک کردن</span>
           </button>
         )}
       </div>
 
-      {/* Calculated Savings Breakdown Cards */}
-      <div className="p-3.5 sm:p-4 rounded-2xl bg-slate-950/90 border border-slate-800/90 space-y-3">
-        
-        {/* Total Savings Header */}
-        <div className="flex items-center justify-between border-b border-slate-800/80 pb-2.5">
-          <div className="flex items-center gap-2">
-            <span className="w-2.5 h-2.5 rounded-full bg-emerald-400" />
-            <span className="text-xs sm:text-sm font-bold text-slate-200">
-              کل پس‌انداز ({formatPercent(settings.savingsPercent)} سرمایه):
-            </span>
-          </div>
-          <span className="text-base sm:text-lg font-black text-emerald-400 dir-ltr">
-            {formatToman(totalSavingsAmount)} تومان
+      {/* Numeric Amount Input */}
+      <div className="space-y-1.5">
+        <div className="relative flex items-center">
+          <input
+            type="text"
+            inputMode="numeric"
+            value={displayValue}
+            onChange={handleInputChange}
+            placeholder="مثال: ۲۵,۰۰۰,۰۰۰"
+            className="w-full bg-slate-950/90 border border-slate-700/90 rounded-2xl px-4 py-3.5 text-base sm:text-lg font-black text-slate-100 placeholder-slate-600 focus:outline-none focus:border-gold-500 transition-all font-mono pl-16 text-right"
+          />
+          <span className="absolute left-4 text-xs font-bold text-slate-400 pointer-events-none">
+            تومان
           </span>
         </div>
 
-        {/* Sub-allocations: Gold vs Crypto */}
-        <div className="grid grid-cols-2 gap-2.5 pt-0.5">
+        {/* Persian Words Readout (Quality of Life) */}
+        {persianWords && (
+          <div className="px-3 py-1.5 rounded-xl bg-gold-500/10 border border-gold-500/20 text-xs font-bold text-gold-300 animate-fadeIn">
+            {persianWords}
+          </div>
+        )}
+      </div>
+
+      {/* Quick-Add Chips */}
+      <div className="flex flex-wrap items-center gap-2 pt-1">
+        {[
+          { label: '+۱ میلیون', value: 1000000 },
+          { label: '+۵ میلیون', value: 5000000 },
+          { label: '+۱۰ میلیون', value: 10000000 },
+          { label: '+۵۰ میلیون', value: 50000000 },
+          { label: '+۱۰۰ میلیون', value: 100000000 },
+        ].map((chip) => (
+          <button
+            key={chip.value}
+            onClick={() => handleQuickAdd(chip.value)}
+            className="px-3 py-2 rounded-xl bg-slate-900/90 hover:bg-slate-800 text-slate-300 hover:text-gold-300 border border-slate-800 text-xs font-bold transition-all interactive-tap touch-target"
+          >
+            {chip.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Calculated Savings Split Preview */}
+      {totalSavingsAmount > 0 && (
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-3 border-t border-slate-800/80 animate-fadeIn">
           
-          {/* Gold Pill */}
-          <div className="p-3 rounded-2xl bg-amber-500/10 border border-gold-500/30 flex flex-col justify-between">
-            <div className="flex items-center justify-between text-gold-400 mb-1">
-              <span className="text-[11px] font-bold">🥇 طلا ({formatPercent(settings.goldPercent)})</span>
-              <ArrowDownRight className="w-3.5 h-3.5 opacity-75" />
+          {/* 30% Savings */}
+          <div className="p-3 rounded-2xl bg-slate-950/80 border border-slate-800/90 space-y-1">
+            <div className="flex items-center justify-between text-[11px] text-slate-400">
+              <span className="flex items-center gap-1 font-bold text-slate-300">
+                <Wallet className="w-3.5 h-3.5 text-slate-400" />
+                <span>سهم پس‌انداز ({toPersianDigits(settings.savingsPercent)}%)</span>
+              </span>
             </div>
-            <div className="text-xs sm:text-sm font-black text-gold-300 dir-ltr">
-              {formatToman(goldBuyAmount)} ت
+            <div className="text-sm font-black text-slate-100">
+              {formatToman(totalSavingsAmount)} <span className="text-[10px] text-slate-400 font-normal">ت</span>
             </div>
           </div>
 
-          {/* Crypto Pill */}
-          <div className="p-3 rounded-2xl bg-indigo-500/10 border border-indigo-500/30 flex flex-col justify-between">
-            <div className="flex items-center justify-between text-indigo-400 mb-1">
-              <span className="text-[11px] font-bold">⚡ رمزارزها ({formatPercent(settings.cryptoPercent)})</span>
-              <ArrowDownRight className="w-3.5 h-3.5 opacity-75" />
+          {/* 80% Gold Buy */}
+          <div className="p-3 rounded-2xl bg-slate-950/80 border border-gold-500/30 space-y-1">
+            <div className="flex items-center justify-between text-[11px]">
+              <span className="flex items-center gap-1 font-bold text-gold-400">
+                <Coins className="w-3.5 h-3.5" />
+                <span>خرید طلا ({toPersianDigits(settings.goldPercent)}%)</span>
+              </span>
             </div>
-            <div className="text-xs sm:text-sm font-black text-indigo-300 dir-ltr">
-              {formatToman(cryptoBuyAmount)} ت
+            <div className="text-sm font-black text-gold-300">
+              {formatToman(goldBuyAmount)} <span className="text-[10px] text-slate-400 font-normal">ت</span>
+            </div>
+          </div>
+
+          {/* 20% Crypto Buy */}
+          <div className="p-3 rounded-2xl bg-slate-950/80 border border-indigo-500/30 space-y-1">
+            <div className="flex items-center justify-between text-[11px]">
+              <span className="flex items-center gap-1 font-bold text-indigo-400">
+                <TrendingUp className="w-3.5 h-3.5" />
+                <span>خرید کریپتو ({toPersianDigits(settings.cryptoPercent)}%)</span>
+              </span>
+            </div>
+            <div className="text-sm font-black text-indigo-300">
+              {formatToman(cryptoBuyAmount)} <span className="text-[10px] text-slate-400 font-normal">ت</span>
             </div>
           </div>
 
         </div>
-
-      </div>
+      )}
 
     </div>
   );

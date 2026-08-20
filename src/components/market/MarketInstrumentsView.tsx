@@ -13,10 +13,12 @@ import {
   Sparkles,
   Info,
   Coins,
+  ShieldCheck,
 } from 'lucide-react';
 import { useMarketData, CombinedMarketItem } from '../../hooks/useMarketData';
 import { PortfolioDonutChart, DonutChartItem } from '../common/PortfolioDonutChart';
 import { PullToRefreshContainer } from '../common/PullToRefreshContainer';
+import { CardSkeleton } from '../common/SkeletonLoader';
 import { formatToman, formatPercent, toPersianDigits, getPersianFormattedDate } from '../../utils/formatters';
 import { triggerHaptic } from '../../utils/haptics';
 import { AddMarketInstrumentModal } from './AddMarketInstrumentModal';
@@ -172,7 +174,7 @@ export const MarketInstrumentsView: React.FC = () => {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <div className="w-8 h-8 rounded-xl bg-gold-500/20 text-gold-400 flex items-center justify-center font-bold text-sm">
-                👑
+                <Coins className="w-4 h-4" />
               </div>
               <h3 className="text-sm font-black text-slate-100">
                 ترکیب صندوق‌های طلا در سبد
@@ -200,7 +202,7 @@ export const MarketInstrumentsView: React.FC = () => {
             صندوق‌ها و دارایی‌های تحت نظر
           </h3>
           <p className="text-[11px] text-slate-400">
-            {toPersianDigits(combinedItems.length)} نماد با اطلاعات لحظه‌ای TSETMC
+            برای ویرایش یا حذف، روی هر کارت ضربه بزنید
           </p>
         </div>
 
@@ -209,155 +211,136 @@ export const MarketInstrumentsView: React.FC = () => {
             triggerHaptic('light');
             setIsAddModalOpen(true);
           }}
-          className="px-3.5 py-2 rounded-2xl bg-gold-500 hover:bg-gold-400 text-slate-950 text-xs font-black flex items-center gap-1.5 transition-all interactive-tap shadow-gold-glow touch-target"
+          className="flex items-center gap-1.5 px-3.5 py-2 rounded-2xl bg-gradient-to-r from-amber-400 to-gold-500 hover:from-amber-300 hover:to-gold-400 text-slate-950 font-black text-xs transition-all interactive-tap shadow-gold-glow touch-target"
         >
-          <Plus className="w-4 h-4" />
-          <span>افزودن نماد جدید</span>
+          <Plus className="w-3.5 h-3.5" />
+          <span>افزودن نماد</span>
         </button>
       </div>
 
-      {/* 4. Instruments Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        {combinedItems.map((item) => {
-          const { instrument, quote, holding, currentValueTomans, profitTomans, profitPercent } = item;
-          const isPositive = (quote?.priceChangePercent ?? 0) >= 0;
+      {/* 4. Instruments Grid or Skeleton */}
+      {isLoading && combinedItems.length === 0 ? (
+        <CardSkeleton count={4} />
+      ) : combinedItems.length === 0 ? (
+        <div className="text-center py-10 px-4 glass-card border border-slate-800 rounded-3xl space-y-3">
+          <div className="w-12 h-12 rounded-2xl bg-slate-800 flex items-center justify-center mx-auto text-slate-400">
+            <Coins className="w-6 h-6" />
+          </div>
+          <h4 className="text-sm font-bold text-slate-200">هنوز دارایی طلا ثبت نشده است</h4>
+          <p className="text-xs text-slate-400 max-w-xs mx-auto">
+            با زدن دکمه «افزودن نماد»، صندوق‌های طلای بورس (مانند عیار، طلا، کهربا) را به سبد خود بیفزایید.
+          </p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {combinedItems.map((item) => {
+            const { instrument, holding, quote, currentValueTomans, profitTomans, profitPercent } = item;
+            const priceTomans = quote?.lastPriceTomans || 0;
+            const priceChangePct = quote?.priceChangePercent || 0;
+            const isPositive = priceChangePct >= 0;
 
-          return (
-            <div
-              key={instrument.symbol}
-              className="glass-card p-4 border border-slate-800 hover:border-gold-500/40 transition-all space-y-3 relative group"
-            >
-              {/* Card Top: Symbol Name, Badge, Edit button */}
-              <div className="flex items-start justify-between gap-2">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-black text-slate-100">
-                      {instrument.name}
-                    </span>
-                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-800 text-gold-400 font-bold border border-slate-700 font-mono">
-                      {instrument.symbol}
-                    </span>
-                  </div>
-                  <span className="text-[10px] text-slate-400 block mt-0.5">
-                    {instrument.assetType === 'etf'
-                      ? 'صندوق طلای بورس'
-                      : instrument.assetType === 'commodity'
-                      ? 'سکه و طلای فیزیکی'
-                      : 'سهم و اوراق'}
-                  </span>
-                </div>
-
-                <div className="flex items-center gap-1.5">
-                  <button
-                    onClick={() => {
-                      triggerHaptic('light');
-                      setEditingItem(item);
-                    }}
-                    className="p-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-gold-300 border border-slate-800 transition-all touch-target"
-                    title="ویرایش موجودی دارایی"
-                  >
-                    <Edit3 className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              </div>
-
-              {/* Price & Change Row */}
-              <div className="p-3 rounded-2xl bg-slate-950/70 border border-slate-800/80 flex items-center justify-between">
-                <div>
-                  <span className="text-[10px] text-slate-400 block">آخرین قیمت (واحد)</span>
-                  <span className="text-sm font-black text-slate-100">
-                    {quote?.lastPriceTomans ? `${formatToman(quote.lastPriceTomans)} ت` : 'در حال دریافت...'}
-                  </span>
-                </div>
-
-                {quote?.priceChangePercent !== undefined && (
-                  <div
-                    className={`px-2.5 py-1 rounded-xl text-xs font-black flex items-center gap-1 dir-ltr ${
-                      isPositive
-                        ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30'
-                        : 'bg-rose-500/15 text-rose-400 border border-rose-500/30'
-                    }`}
-                  >
-                    {isPositive ? (
-                      <ArrowUpRight className="w-3.5 h-3.5" />
-                    ) : (
-                      <ArrowDownRight className="w-3.5 h-3.5" />
-                    )}
-                    <span>{formatPercent(Math.abs(quote.priceChangePercent))}</span>
-                  </div>
-                )}
-              </div>
-
-              {/* Holding Details (If user holds units) */}
-              {holding && holding.quantity > 0 ? (
-                <div className="p-2.5 rounded-2xl bg-gold-500/5 border border-gold-500/20 space-y-1.5 text-xs">
-                  <div className="flex items-center justify-between text-slate-300">
-                    <span className="text-slate-400">موجودی شما:</span>
-                    <span className="font-bold font-mono">
-                      {toPersianDigits(holding.quantity)} واحد
-                    </span>
-                  </div>
-
-                  <div className="flex items-center justify-between text-slate-100">
-                    <span className="text-slate-400">ارزش کل دارایی:</span>
-                    <span className="font-black text-gold-400">
-                      {formatToman(currentValueTomans || 0)} تومان
-                    </span>
-                  </div>
-
-                  {profitTomans !== undefined && (
-                    <div className="flex items-center justify-between pt-1 border-t border-slate-800/80">
-                      <span className="text-[10px] text-slate-400">سود/زیان دارایی:</span>
-                      <span
-                        className={`text-[11px] font-bold ${
-                          profitTomans >= 0 ? 'text-emerald-400' : 'text-rose-400'
-                        }`}
-                      >
-                        {formatToman(profitTomans)} ت ({profitPercent !== undefined ? formatPercent(profitPercent) : ''})
+            return (
+              <div
+                key={instrument.id || instrument.providerInstrumentId || instrument.symbol}
+                onClick={() => {
+                  triggerHaptic('light');
+                  setEditingItem(item);
+                }}
+                className="group relative p-4 rounded-3xl bg-slate-900/90 hover:bg-slate-900 border border-slate-800 hover:border-gold-500/40 transition-all cursor-pointer shadow-lg space-y-3 interactive-tap"
+              >
+                {/* Card Top: Symbol + Price + Change Chip */}
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="text-base font-black text-slate-100">
+                        {instrument.symbol}
+                      </span>
+                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-gold-500/10 text-gold-400 border border-gold-500/20 font-bold">
+                        صندوق طلا
                       </span>
                     </div>
-                  )}
-                </div>
-              ) : (
-                <div className="p-2.5 rounded-2xl bg-slate-950/40 border border-dashed border-slate-800/80 flex items-center justify-between text-[11px] text-slate-500">
-                  <span>موجودی ثبت نشده است</span>
-                  <button
-                    onClick={() => {
-                      triggerHaptic('light');
-                      setEditingItem(item);
-                    }}
-                    className="text-gold-400 hover:text-gold-300 font-bold"
-                  >
-                    + ثبت موجودی
-                  </button>
-                </div>
-              )}
+                    <span className="text-[11px] text-slate-400 block truncate mt-0.5">
+                      {instrument.name}
+                    </span>
+                  </div>
 
-              {/* Today range if available */}
-              {quote?.maxPriceRials && quote?.minPriceRials && (
-                <div className="flex items-center justify-between text-[10px] text-slate-500 px-1 pt-1 border-t border-slate-800/60">
-                  <span>کف روز: {formatToman(Math.round(quote.minPriceRials / 10))} ت</span>
-                  <span>سقف روز: {formatToman(Math.round(quote.maxPriceRials / 10))} ت</span>
-                </div>
-              )}
-            </div>
-          );
-        })}
-      </div>
+                  <div className="text-left shrink-0 space-y-0.5">
+                    <div className="text-sm font-black text-slate-100">
+                      {priceTomans > 0 ? (
+                        <span>{formatToman(priceTomans)} <span className="text-[10px] text-slate-400 font-normal">ت</span></span>
+                      ) : (
+                        <span className="text-xs text-slate-500">در حال دریافت...</span>
+                      )}
+                    </div>
 
-      {/* Modals */}
+                    {quote && (
+                      <span
+                        className={`text-[10px] font-bold px-1.5 py-0.2 rounded-md inline-flex items-center gap-0.5 dir-ltr ${
+                          isPositive
+                            ? 'bg-emerald-500/15 text-emerald-400'
+                            : 'bg-rose-500/15 text-rose-400'
+                        }`}
+                      >
+                        {isPositive ? (
+                          <ArrowUpRight className="w-3 h-3" />
+                        ) : (
+                          <ArrowDownRight className="w-3 h-3" />
+                        )}
+                        <span>{formatPercent(Math.abs(priceChangePct))}</span>
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                {/* Card Bottom: User Holdings Valuation */}
+                {holding ? (
+                  <div className="p-2.5 rounded-2xl bg-slate-950/80 border border-slate-800/80 flex items-center justify-between text-xs">
+                    <div>
+                      <span className="text-[10px] text-slate-400 block">موجودی شما:</span>
+                      <span className="font-black text-slate-200">
+                        {toPersianDigits(holding.quantity)} واحد
+                      </span>
+                    </div>
+
+                    <div className="text-left">
+                      <span className="text-[10px] text-slate-400 block">ارزش فعلی:</span>
+                      <span className="font-black text-gold-400">
+                        {formatToman(currentValueTomans || 0)} ت
+                      </span>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-[11px] text-slate-500 pt-1">
+                    بدون ثبت موجودی (فقط پایش قیمت)
+                  </div>
+                )}
+
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Add Instrument Modal */}
       <AddMarketInstrumentModal
         isOpen={isAddModalOpen}
         onClose={() => setIsAddModalOpen(false)}
-        onAdd={addInstrumentAndHolding}
+        onAdd={(inst, qty, avgPrice) => {
+          addInstrumentAndHolding(inst, qty, avgPrice);
+        }}
       />
 
+      {/* Edit Holding Modal */}
       <EditMarketHoldingModal
-        isOpen={!!editingItem}
         item={editingItem}
+        isOpen={!!editingItem}
         onClose={() => setEditingItem(null)}
-        onSave={updateHolding}
-        onDelete={removeHolding}
+        onSave={(holdingId, qty, avgPrice) => {
+          updateHolding(holdingId, qty, avgPrice);
+        }}
+        onDelete={(holdingId) => {
+          removeHolding(holdingId);
+        }}
       />
 
     </PullToRefreshContainer>

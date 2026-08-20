@@ -11,6 +11,7 @@ import {
   Sparkles,
   Sliders,
   DollarSign,
+  Activity,
 } from 'lucide-react';
 import { CryptoAsset } from '../../types/investment';
 import { useNobitex } from '../../hooks/useNobitex';
@@ -18,6 +19,7 @@ import { NobitexMarketStat } from '../../services/nobitex/types';
 import { nobitexService } from '../../services/nobitex';
 import { PortfolioDonutChart, DonutChartItem } from '../common/PortfolioDonutChart';
 import { PullToRefreshContainer } from '../common/PullToRefreshContainer';
+import { CardSkeleton } from '../common/SkeletonLoader';
 import { NobitexIntegrationCard } from './NobitexIntegrationCard';
 import { formatToman, formatPercent, toPersianDigits, getPersianFormattedDate } from '../../utils/formatters';
 import { triggerHaptic } from '../../utils/haptics';
@@ -148,7 +150,7 @@ export const CryptoMarketView: React.FC<CryptoMarketViewProps> = ({
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <div className="w-8 h-8 rounded-xl bg-indigo-500/20 text-indigo-400 flex items-center justify-center font-bold text-sm">
-                🪙
+                <Coins className="w-4 h-4" />
               </div>
               <h3 className="text-sm font-black text-slate-100">
                 ترکیب دارایی‌های کریپتو
@@ -199,87 +201,91 @@ export const CryptoMarketView: React.FC<CryptoMarketViewProps> = ({
           <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
         </div>
 
-        {/* Tickers List */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-          {filteredTickers.map((ticker) => {
-            const statKey = `${ticker.symbol}-rls`;
-            const stat = marketStats[statKey];
-            const priceTomans = stat?.latest ? Math.round(parseFloat(stat.latest) / 10) : 0;
-            const dayChange = stat?.dayChange ? parseFloat(stat.dayChange) : 0;
-            const isPositive = dayChange >= 0;
+        {/* Tickers Grid or Skeleton */}
+        {isLoadingStats && Object.keys(marketStats).length === 0 ? (
+          <CardSkeleton count={6} />
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+            {filteredTickers.map((ticker) => {
+              const statKey = `${ticker.symbol}-rls`;
+              const stat = marketStats[statKey];
+              const priceTomans = stat?.latest ? Math.round(parseFloat(stat.latest) / 10) : 0;
+              const dayChange = stat?.dayChange ? parseFloat(stat.dayChange) : 0;
+              const isPositive = dayChange >= 0;
 
-            // Check if user owns this coin
-            const userAsset = cryptoAssets.find((a) => a.symbol.toLowerCase() === ticker.symbol);
-            const userCoinAmount = userAsset?.currentAmount || 0;
+              // Check if user owns this coin
+              const userAsset = cryptoAssets.find((a) => a.symbol.toLowerCase() === ticker.symbol);
+              const userCoinAmount = userAsset?.currentAmount || 0;
 
-            return (
-              <div
-                key={ticker.symbol}
-                className="p-3.5 rounded-2xl bg-slate-900/90 border border-slate-800/90 hover:border-slate-700 transition-all space-y-2"
-              >
-                <div className="flex items-center justify-between gap-2">
-                  <div className="flex items-center gap-2.5 min-w-0">
-                    <div
-                      className="w-8 h-8 rounded-xl flex items-center justify-center font-bold text-xs shrink-0"
-                      style={{ backgroundColor: `${ticker.color}25`, color: ticker.color }}
-                    >
-                      {ticker.symbol.toUpperCase().slice(0, 3)}
-                    </div>
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-xs font-bold text-slate-200 block truncate">
-                          {ticker.name}
-                        </span>
-                        <span className="text-[10px] text-slate-500 font-mono">
-                          {ticker.symbol.toUpperCase()}
-                        </span>
+              return (
+                <div
+                  key={ticker.symbol}
+                  className="p-3.5 rounded-2xl bg-slate-900/90 border border-slate-800/90 hover:border-slate-700 transition-all space-y-2"
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div
+                        className="w-8 h-8 rounded-xl flex items-center justify-center font-bold text-xs shrink-0"
+                        style={{ backgroundColor: `${ticker.color}25`, color: ticker.color }}
+                      >
+                        {ticker.symbol.toUpperCase().slice(0, 3)}
                       </div>
-                      {userCoinAmount > 0 && (
-                        <span className="text-[10px] text-emerald-400 font-bold block">
-                          موجودی شما: {userCoinAmount} {ticker.symbol.toUpperCase()}
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-xs font-bold text-slate-200 block truncate">
+                            {ticker.name}
+                          </span>
+                          <span className="text-[10px] text-slate-500 font-mono">
+                            {ticker.symbol.toUpperCase()}
+                          </span>
+                        </div>
+                        {userCoinAmount > 0 && (
+                          <span className="text-[10px] text-emerald-400 font-bold block">
+                            موجودی شما: {userCoinAmount} {ticker.symbol.toUpperCase()}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="text-left space-y-0.5 shrink-0">
+                      <span className="text-xs font-black text-slate-100 block">
+                        {priceTomans > 0 ? `${formatToman(priceTomans)} ت` : 'در حال دریافت...'}
+                      </span>
+                      {stat?.dayChange !== undefined && (
+                        <span
+                          className={`text-[10px] font-bold px-1.5 py-0.2 rounded-md inline-flex items-center gap-0.5 dir-ltr ${
+                            isPositive
+                              ? 'bg-emerald-500/15 text-emerald-400'
+                              : 'bg-rose-500/15 text-rose-400'
+                          }`}
+                        >
+                          {isPositive ? (
+                            <ArrowUpRight className="w-3 h-3" />
+                          ) : (
+                            <ArrowDownRight className="w-3 h-3" />
+                          )}
+                          <span>{formatPercent(Math.abs(dayChange))}</span>
                         </span>
                       )}
                     </div>
                   </div>
 
-                  <div className="text-left space-y-0.5 shrink-0">
-                    <span className="text-xs font-black text-slate-100 block">
-                      {priceTomans > 0 ? `${formatToman(priceTomans)} ت` : 'در حال دریافت...'}
-                    </span>
-                    {stat?.dayChange !== undefined && (
-                      <span
-                        className={`text-[10px] font-bold px-1.5 py-0.2 rounded-md inline-flex items-center gap-0.5 dir-ltr ${
-                          isPositive
-                            ? 'bg-emerald-500/15 text-emerald-400'
-                            : 'bg-rose-500/15 text-rose-400'
-                        }`}
-                      >
-                        {isPositive ? (
-                          <ArrowUpRight className="w-3 h-3" />
-                        ) : (
-                          <ArrowDownRight className="w-3 h-3" />
-                        )}
-                        <span>{formatPercent(Math.abs(dayChange))}</span>
+                  {/* Additional 24h high/low stats if available */}
+                  {stat && stat.dayHigh && stat.dayLow && (
+                    <div className="pt-1.5 border-t border-slate-800/80 flex items-center justify-between text-[10px] text-slate-400">
+                      <span>
+                        کف ۲۴ ساعته: <strong className="text-slate-300">{formatToman(Math.round(parseFloat(stat.dayLow) / 10))}</strong>
                       </span>
-                    )}
-                  </div>
+                      <span>
+                        سقف ۲۴ ساعته: <strong className="text-slate-300">{formatToman(Math.round(parseFloat(stat.dayHigh) / 10))}</strong>
+                      </span>
+                    </div>
+                  )}
                 </div>
-
-                {/* Additional 24h high/low stats if available */}
-                {stat && stat.dayHigh && stat.dayLow && (
-                  <div className="pt-1.5 border-t border-slate-800/80 flex items-center justify-between text-[10px] text-slate-400">
-                    <span>
-                      کف ۲۴ ساعته: <strong className="text-slate-300">{formatToman(Math.round(parseFloat(stat.dayLow) / 10))}</strong>
-                    </span>
-                    <span>
-                      سقف ۲۴ ساعته: <strong className="text-slate-300">{formatToman(Math.round(parseFloat(stat.dayHigh) / 10))}</strong>
-                    </span>
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
+        )}
 
       </div>
 

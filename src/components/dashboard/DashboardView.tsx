@@ -7,11 +7,12 @@ import {
   ArrowDownRight,
   Sparkles,
   CheckCircle2,
-  AlertCircle,
+  AlertTriangle,
   Copy,
   Check,
   RefreshCw,
-  Sliders,
+  PieChart,
+  ShieldCheck,
   ChevronLeft,
 } from 'lucide-react';
 import {
@@ -129,7 +130,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-2.5">
             <div className="w-10 h-10 rounded-2xl bg-gold-500/20 text-gold-400 flex items-center justify-center font-bold text-lg border border-gold-500/30">
-              💎
+              <ShieldCheck className="w-5 h-5 text-gold-400" />
             </div>
             <div>
               <span className="text-[11px] font-bold text-slate-400 block">ارزش کل دارایی‌ها (سبد سرمایه)</span>
@@ -213,11 +214,13 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             <span className="text-slate-400">وضعیت تعادل ۸۰ به ۲۰:</span>
             {isGoldUnderweight ? (
               <span className="text-gold-400 font-bold flex items-center gap-1">
-                <span>⚠️ سهم طلا کمتر از هدف است (خرید طلا در اولویت است)</span>
+                <AlertTriangle className="w-3.5 h-3.5" />
+                <span>سهم طلا کمتر از هدف است (خرید طلا در اولویت است)</span>
               </span>
             ) : isCryptoUnderweight ? (
               <span className="text-indigo-400 font-bold flex items-center gap-1">
-                <span>⚠️ سهم کریپتو کمتر از هدف است (خرید کریپتو در اولویت است)</span>
+                <AlertTriangle className="w-3.5 h-3.5" />
+                <span>سهم کریپتو کمتر از هدف است (خرید کریپتو در اولویت است)</span>
               </span>
             ) : (
               <span className="text-emerald-400 font-bold flex items-center gap-1">
@@ -235,7 +238,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-xl bg-gold-500/10 text-gold-400 flex items-center justify-center font-bold text-sm">
-              📊
+              <PieChart className="w-4 h-4" />
             </div>
             <h3 className="text-sm font-black text-slate-100">
               ترکیب و سهم دارایی‌ها
@@ -295,7 +298,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <div className="w-8 h-8 rounded-xl bg-indigo-500/20 text-indigo-400 flex items-center justify-center font-bold text-sm">
-                    🪙
+                    <Coins className="w-4 h-4" />
                   </div>
                   <div>
                     <h4 className="text-xs font-black text-slate-100">
