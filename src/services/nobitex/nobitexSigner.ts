@@ -10,7 +10,8 @@ function base64UrlEncode(bytes: Uint8Array): string {
     binary += String.fromCharCode(bytes[i]);
   }
   const base64 = btoa(binary);
-  return base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  // Python base64.urlsafe_b64encode replaces '+' with '-' and '/' with '_', and keeps '=' padding
+  return base64.replace(/\+/g, '-').replace(/\//g, '_');
 }
 
 function decodeSecretKey(secret: string): Uint8Array {

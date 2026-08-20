@@ -38,7 +38,7 @@ class NobitexService {
     path: string;
     body?: string;
   }): Promise<Record<string, string>> {
-    const { config, method, path, body } = params;
+    const { config, method, path, body = '' } = params;
 
     if (config.authType === 'api_key' && config.publicKey && config.secretKey) {
       return signNobitexRequest({
@@ -60,6 +60,21 @@ class NobitexService {
     };
   }
 
+  private handleNobitexError(data: any, statusCode?: number): never {
+    if (data?.code === 'UnexpectedError') {
+      throw new Error(
+        'امضای دیجیتال یا کلید نوبیتکس تایید نشد. لطفاً از صحت کلید عمومی (Key) و کلید خصوصی (Secret) اطمینان حاصل فرمایید.'
+      );
+    }
+    if (data?.code === 'KeyNotFound' || statusCode === 401 || statusCode === 403) {
+      throw new Error('کلید API یا توکن نوبیتکس نامعتبر است، منقضی شده یا دسترسی READ ندارد.');
+    }
+    if (data?.code === 'TooManyRequests' || statusCode === 429) {
+      throw new Error('محدودیت درخواست‌های نوبیتکس (Rate Limit). لطفاً چند لحظه بعد تلاش کنید.');
+    }
+    throw new Error(data?.message || `خطا در ارتباط با نوبیتکس: کد ${statusCode || 'نامشخص'}`);
+  }
+
   /**
    * Fetch User Profile to test API Key / Token validity
    */
@@ -72,6 +87,7 @@ class NobitexService {
       config,
       method: 'GET',
       path,
+      body: '',
     });
 
     const res = await fetch(url, {
@@ -79,19 +95,15 @@ class NobitexService {
       headers,
     });
 
-    if (!res.ok) {
-      if (res.status === 401 || res.status === 403) {
-        throw new Error('کلید API یا توکن نوبیتکس نامعتبر است، منقضی شده یا دسترسی READ ندارد.');
-      }
-      if (res.status === 429) {
-        throw new Error('محدودیت درخواست‌های نوبیتکس (Rate Limit). لطفاً چند لحظه بعد تلاش کنید.');
-      }
-      throw new Error(`خطا در ارتباط با نوبیتکس: کد ${res.status}`);
+    let data: any = {};
+    try {
+      data = await res.json();
+    } catch {
+      // Ignore JSON parse error
     }
 
-    const data = await res.json();
-    if (data.status === 'failed') {
-      throw new Error(data.message || 'خطا در دریافت مشخصات کاربر نوبیتکس');
+    if (!res.ok || data.status === 'failed') {
+      this.handleNobitexError(data, res.status);
     }
 
     return data.profile || data;
@@ -104,34 +116,28 @@ class NobitexService {
     const base = this.getBaseUrl();
     const path = '/users/wallets/list';
     const url = `${base}${path}`;
-    const bodyStr = '{}';
 
     const headers = await this.getRequestHeaders({
       config,
       method: 'POST',
       path,
-      body: bodyStr,
+      body: '',
     });
 
     const res = await fetch(url, {
       method: 'POST',
       headers,
-      body: bodyStr,
     });
 
-    if (!res.ok) {
-      if (res.status === 401 || res.status === 403) {
-        throw new Error('کلید API نوبیتکس نامعتبر است یا دسترسی READ ندارد.');
-      }
-      if (res.status === 429) {
-        throw new Error('محدودیت تعداد درخواست نوبیتکس (Rate Limit). لطفاً چند لحظه بعد تلاش کنید.');
-      }
-      throw new Error(`خطا در دریافت کیف‌پول‌ها: کد ${res.status}`);
+    let data: any = {};
+    try {
+      data = await res.json();
+    } catch {
+      // Ignore JSON parse error
     }
 
-    const data = await res.json();
-    if (data.status === 'failed') {
-      throw new Error(data.message || 'خطا در دریافت لیست کیف‌پول‌های نوبیتکس');
+    if (!res.ok || data.status === 'failed') {
+      this.handleNobitexError(data, res.status);
     }
 
     return data.wallets || [];
