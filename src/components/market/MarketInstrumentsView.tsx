@@ -12,6 +12,7 @@ import {
   AlertCircle,
   Activity,
   Layers,
+  ChevronLeft,
 } from 'lucide-react';
 import { useMarketData, CombinedMarketItem } from '../../hooks/useMarketData';
 import { PortfolioDonutChart, DonutChartItem } from '../common/PortfolioDonutChart';
@@ -22,6 +23,7 @@ import { triggerHaptic } from '../../utils/haptics';
 import { AddMarketInstrumentModal } from './AddMarketInstrumentModal';
 import { EditMarketHoldingModal } from './EditMarketHoldingModal';
 import { AssetType } from '../../services/marketData/types';
+import { PhysicalGoldItem } from '../../types/investment';
 
 function getAssetTypeBadge(type: AssetType, symbol: string): { label: string; bg: string; text: string; border: string } {
   if (
@@ -47,7 +49,17 @@ function getAssetTypeBadge(type: AssetType, symbol: string): { label: string; bg
   }
 }
 
-export const MarketInstrumentsView: React.FC = () => {
+interface MarketInstrumentsViewProps {
+  physicalGoldItems?: PhysicalGoldItem[];
+  totalPhysicalGoldValueTomans?: number;
+  onNavigateToHoldings?: () => void;
+}
+
+export const MarketInstrumentsView: React.FC<MarketInstrumentsViewProps> = ({
+  physicalGoldItems = [],
+  totalPhysicalGoldValueTomans = 0,
+  onNavigateToHoldings,
+}) => {
   const {
     combinedItems,
     marketStatus,
@@ -79,19 +91,36 @@ export const MarketInstrumentsView: React.FC = () => {
     second: '2-digit',
   });
 
-  // Donut chart items from user holdings
-  const donutItems: DonutChartItem[] = combinedItems
+  const totalCombinedGoldAndMarketValue = totalMarketValueTomans + totalPhysicalGoldValueTomans;
+
+  // Donut chart items: Distinct radiant gold for physical, rich amber gold for bourse
+  const physicalDonutItems: DonutChartItem[] = physicalGoldItems
+    .filter((item) => item.quantity > 0 && item.unitPriceTomans > 0)
+    .map((item, idx) => {
+      const radiantGolds = ['#FBBF24', '#F59E0B', '#FDE047', '#FEF08A'];
+      return {
+        id: `phys_${item.id}`,
+        label: item.title,
+        value: item.quantity * item.unitPriceTomans,
+        color: radiantGolds[idx % radiantGolds.length],
+        sublabel: `${toPersianDigits(item.quantity)} ${item.unit} (طلای فیزیکی)`,
+      };
+    });
+
+  const bourseDonutItems: DonutChartItem[] = combinedItems
     .filter((item) => (item.currentValueTomans || 0) > 0)
     .map((item, idx) => {
-      const colors = ['#D4AF37', '#EAB308', '#6366F1', '#3B82F6', '#10B981', '#EC4899', '#8B5CF6'];
+      const amberGolds = ['#D97706', '#B45309', '#D4AF37', '#92400E'];
       return {
         id: item.instrument.symbol,
         label: item.instrument.name,
         value: item.currentValueTomans || 0,
-        color: colors[idx % colors.length],
-        sublabel: `${item.holding ? toPersianDigits(item.holding.quantity) + ' واحد' : ''}`,
+        color: amberGolds[idx % amberGolds.length],
+        sublabel: `${item.holding ? toPersianDigits(item.holding.quantity) + ' واحد' : ''} (صندوق بورسی)`,
       };
     });
+
+  const allDonutItems: DonutChartItem[] = [...physicalDonutItems, ...bourseDonutItems];
 
   return (
     <PullToRefreshContainer onRefresh={handleManualRefresh} isRefreshing={isRefreshing} className="space-y-4 pb-24">
@@ -151,18 +180,19 @@ export const MarketInstrumentsView: React.FC = () => {
 
         {/* Portfolio Summary Bar */}
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+          
           <div className="p-3 rounded-2xl bg-slate-950/80 border border-slate-800/80 space-y-1">
             <span className="text-[10px] text-slate-400 font-medium block">
-              ارزش کل دارایی‌های بورسی
+              ارزش کل بورس و طلا
             </span>
             <div className="text-sm sm:text-base font-black text-gold-400">
-              {formatToman(totalMarketValueTomans)} <span className="text-[10px] text-slate-400 font-normal">تومان</span>
+              {formatToman(totalCombinedGoldAndMarketValue)} <span className="text-[10px] text-slate-400 font-normal">تومان</span>
             </div>
           </div>
 
           <div className="p-3 rounded-2xl bg-slate-950/80 border border-slate-800/80 space-y-1">
             <span className="text-[10px] text-slate-400 font-medium block">
-              سود / زیان کل
+              سود / زیان کل بورسی
             </span>
             {totalProfitTomans !== undefined ? (
               <div
@@ -182,39 +212,53 @@ export const MarketInstrumentsView: React.FC = () => {
 
           <div className="p-3 rounded-2xl bg-slate-950/80 border border-slate-800/80 space-y-1 col-span-2 sm:col-span-1">
             <span className="text-[10px] text-slate-400 font-medium block">
-              آخرین دریافت استعلام
+              آخرین استعلام بورس
             </span>
             <div className="text-xs font-bold text-slate-300 flex items-center gap-1">
               <Clock className="w-3.5 h-3.5 text-slate-400" />
               <span>{refreshTimeStr}</span>
             </div>
           </div>
+
         </div>
 
       </div>
 
-      {/* 2. HOLDINGS DONUT CHART */}
-      {donutItems.length > 0 && (
+      {/* 2. GOLD HOLDINGS DONUT CHART (TWO-TONE: RADIANT GOLD FOR PHYSICAL & AMBER GOLD FOR BOURSE) */}
+      {allDonutItems.length > 0 && (
         <div className="glass-card p-5 border border-gold-500/30 shadow-xl space-y-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <div className="w-8 h-8 rounded-xl bg-gold-500/20 text-gold-400 flex items-center justify-center font-bold text-sm">
                 <Coins className="w-4 h-4" />
               </div>
-              <h3 className="text-sm font-black text-slate-100">
-                ترکیب دارایی‌های بورس و طلا
-              </h3>
+              <div>
+                <h3 className="text-sm font-black text-slate-100">
+                  ترکیب دارایی‌های طلا و بورس
+                </h3>
+                <div className="flex items-center gap-3 text-[10px] text-slate-400 mt-0.5">
+                  <span className="flex items-center gap-1">
+                    <span className="w-2 h-2 rounded-full bg-amber-400" />
+                    <span>طلای فیزیکی ({formatToman(totalPhysicalGoldValueTomans)} ت)</span>
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <span className="w-2 h-2 rounded-full bg-amber-600" />
+                    <span>طلای بورس ({formatToman(totalMarketValueTomans)} ت)</span>
+                  </span>
+                </div>
+              </div>
             </div>
+
             <span className="text-xs font-black text-gold-400">
-              {formatToman(totalMarketValueTomans)} تومان
+              {formatToman(totalCombinedGoldAndMarketValue)} تومان
             </span>
           </div>
 
           <PortfolioDonutChart
-            items={donutItems}
-            centerTitle="مجموع بورس"
-            centerSubtitle={`${toPersianDigits(donutItems.length)} نماد`}
-            size={200}
+            items={allDonutItems}
+            centerTitle="مجموع طلا"
+            centerSubtitle={`${toPersianDigits(allDonutItems.length)} قلم`}
+            size={210}
             strokeWidth={22}
           />
         </div>
@@ -224,7 +268,7 @@ export const MarketInstrumentsView: React.FC = () => {
       <div className="flex items-center justify-between pt-1">
         <div>
           <h3 className="text-sm font-black text-slate-100">
-            نمادها و دارایی‌های تحت نظر
+            نمادها و دارایی‌های بورسی تحت نظر
           </h3>
           <p className="text-[11px] text-slate-400">
             برای ویرایش تعداد واحدها یا حذف، روی هر کارت ضربه بزنید
@@ -239,7 +283,7 @@ export const MarketInstrumentsView: React.FC = () => {
           className="flex items-center gap-1.5 px-3.5 py-2 rounded-2xl bg-gradient-to-r from-amber-400 to-gold-500 hover:from-amber-300 hover:to-gold-400 text-slate-950 font-black text-xs transition-all interactive-tap shadow-gold-glow touch-target"
         >
           <Plus className="w-3.5 h-3.5" />
-          <span>افزودن نماد</span>
+          <span>افزودن نماد بورس</span>
         </button>
       </div>
 
@@ -251,7 +295,7 @@ export const MarketInstrumentsView: React.FC = () => {
           <div className="w-12 h-12 rounded-2xl bg-slate-800 flex items-center justify-center mx-auto text-slate-400">
             <Coins className="w-6 h-6" />
           </div>
-          <h4 className="text-sm font-bold text-slate-200">هنوز نمادی ثبت نکرده‌اید</h4>
+          <h4 className="text-sm font-bold text-slate-200">هنوز نمادی در بورس ثبت نکرده‌اید</h4>
           <p className="text-xs text-slate-400 max-w-xs mx-auto">
             با زدن دکمه «افزودن نماد»، هر سهم یا صندوق بورس (عیار، طلا، فملی، شستا و...) را جستجو و اضافه کنید.
           </p>

@@ -34,6 +34,8 @@ interface DashboardViewProps {
   calculationResult: CalculationResult;
   cryptoAssets: CryptoAsset[];
   goldHoldingValue: number;
+  physicalGoldValue?: number;
+  bourseGoldValue?: number;
   totalCryptoValue: number;
   totalPortfolioValue: number;
   tomanCashBalance: number;
@@ -56,6 +58,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   calculationResult,
   cryptoAssets,
   goldHoldingValue,
+  physicalGoldValue = 0,
+  bourseGoldValue = 0,
   totalCryptoValue,
   totalPortfolioValue,
   tomanCashBalance,
@@ -77,25 +81,49 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const cryptoPercentActual = totalPortfolioValue > 0 ? (totalCryptoValue / totalPortfolioValue) * 100 : 0;
   const cashPercentActual = totalPortfolioValue > 0 ? (tomanCashBalance / totalPortfolioValue) * 100 : 0;
 
-  // Donut chart items
-  const chartItems: DonutChartItem[] = [
-    {
+  // Donut chart items: Distinct radiant gold for physical, rich amber gold for bourse
+  const chartItems: DonutChartItem[] = [];
+
+  if (physicalGoldValue > 0) {
+    chartItems.push({
+      id: 'physical_gold',
+      label: 'طلای فیزیکی و سکه',
+      value: physicalGoldValue,
+      color: '#FBBF24', // Radiant Golden Yellow
+      sublabel: 'طلا و مسکوکات',
+    });
+  }
+
+  if (bourseGoldValue > 0) {
+    chartItems.push({
+      id: 'bourse_gold',
+      label: 'صندوق‌های طلای بورس',
+      value: bourseGoldValue,
+      color: '#D97706', // Rich Amber Gold
+      sublabel: 'صندوق‌های ETF طلا',
+    });
+  }
+
+  // Fallback if neither sub-value is set independently but goldHoldingValue > 0
+  if (chartItems.length === 0 && goldHoldingValue > 0) {
+    chartItems.push({
       id: 'gold',
       label: 'طلا و صندوق‌های بورسی',
       value: goldHoldingValue,
       color: '#D4AF37',
       sublabel: `هدف: ${toPersianDigits(settings.goldPercent)}%`,
       targetPercent: settings.goldPercent,
-    },
-    {
-      id: 'crypto',
-      label: 'ارزهای دیجیتال',
-      value: totalCryptoValue,
-      color: '#6366F1',
-      sublabel: `هدف: ${toPersianDigits(settings.cryptoPercent)}%`,
-      targetPercent: settings.cryptoPercent,
-    },
-  ];
+    });
+  }
+
+  chartItems.push({
+    id: 'crypto',
+    label: 'ارزهای دیجیتال',
+    value: totalCryptoValue,
+    color: '#6366F1',
+    sublabel: `هدف: ${toPersianDigits(settings.cryptoPercent)}%`,
+    targetPercent: settings.cryptoPercent,
+  });
 
   if (tomanCashBalance > 0) {
     chartItems.push({
@@ -153,22 +181,66 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         {/* Breakdown chips */}
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 pt-2 border-t border-slate-800/80">
           
-          {/* Gold Chip */}
-          <div
-            onClick={() => onNavigateToTab('gold')}
-            className="p-3 rounded-2xl bg-slate-950/80 border border-gold-500/30 hover:border-gold-500/60 transition-all cursor-pointer space-y-1"
-          >
-            <div className="flex items-center justify-between text-[11px] text-slate-400">
-              <span className="flex items-center gap-1 font-bold text-gold-400">
-                <Coins className="w-3.5 h-3.5" />
-                <span>طلا ({toPersianDigits(settings.goldPercent)}%)</span>
-              </span>
-              <span className="text-gold-300 font-bold">{formatPercent(goldPercentActual)}</span>
+          {/* Physical Gold Chip (if present) */}
+          {physicalGoldValue > 0 && (
+            <div
+              onClick={() => onNavigateToTab('holdings')}
+              className="p-3 rounded-2xl bg-slate-950/80 border border-amber-400/40 hover:border-amber-400/70 transition-all cursor-pointer space-y-1"
+            >
+              <div className="flex items-center justify-between text-[11px] text-slate-400">
+                <span className="flex items-center gap-1 font-bold text-amber-300">
+                  <Coins className="w-3.5 h-3.5 text-amber-400" />
+                  <span>طلای فیزیکی</span>
+                </span>
+                <span className="text-amber-300 font-bold">
+                  {totalPortfolioValue > 0 ? formatPercent((physicalGoldValue / totalPortfolioValue) * 100) : '۰٪'}
+                </span>
+              </div>
+              <div className="text-sm font-black text-slate-100">
+                {formatToman(physicalGoldValue)} <span className="text-[9px] text-slate-400 font-normal">ت</span>
+              </div>
             </div>
-            <div className="text-sm font-black text-slate-100">
-              {formatToman(goldHoldingValue)} <span className="text-[9px] text-slate-400 font-normal">ت</span>
+          )}
+
+          {/* Bourse Gold Chip (if present) */}
+          {bourseGoldValue > 0 && (
+            <div
+              onClick={() => onNavigateToTab('gold')}
+              className="p-3 rounded-2xl bg-slate-950/80 border border-amber-600/40 hover:border-amber-500/70 transition-all cursor-pointer space-y-1"
+            >
+              <div className="flex items-center justify-between text-[11px] text-slate-400">
+                <span className="flex items-center gap-1 font-bold text-amber-500">
+                  <TrendingUp className="w-3.5 h-3.5 text-amber-500" />
+                  <span>طلای بورس</span>
+                </span>
+                <span className="text-amber-400 font-bold">
+                  {totalPortfolioValue > 0 ? formatPercent((bourseGoldValue / totalPortfolioValue) * 100) : '۰٪'}
+                </span>
+              </div>
+              <div className="text-sm font-black text-slate-100">
+                {formatToman(bourseGoldValue)} <span className="text-[9px] text-slate-400 font-normal">ت</span>
+              </div>
             </div>
-          </div>
+          )}
+
+          {/* Single Gold Chip (fallback if neither sub-value > 0) */}
+          {physicalGoldValue === 0 && bourseGoldValue === 0 && (
+            <div
+              onClick={() => onNavigateToTab('gold')}
+              className="p-3 rounded-2xl bg-slate-950/80 border border-gold-500/30 hover:border-gold-500/60 transition-all cursor-pointer space-y-1"
+            >
+              <div className="flex items-center justify-between text-[11px] text-slate-400">
+                <span className="flex items-center gap-1 font-bold text-gold-400">
+                  <Coins className="w-3.5 h-3.5" />
+                  <span>مجموع طلا ({toPersianDigits(settings.goldPercent)}%)</span>
+                </span>
+                <span className="text-gold-300 font-bold">{formatPercent(goldPercentActual)}</span>
+              </div>
+              <div className="text-sm font-black text-slate-100">
+                {formatToman(goldHoldingValue)} <span className="text-[9px] text-slate-400 font-normal">ت</span>
+              </div>
+            </div>
+          )}
 
           {/* Crypto Chip */}
           <div
@@ -207,58 +279,66 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           )}
 
         </div>
-
-        {/* Balance Status Banner */}
-        <div className="p-3 rounded-2xl bg-slate-950/90 border border-slate-800 flex items-center justify-between text-xs">
-          <div className="flex items-center gap-2">
-            <span className="text-slate-400">وضعیت تعادل ۸۰ به ۲۰:</span>
-            {isGoldUnderweight ? (
-              <span className="text-gold-400 font-bold flex items-center gap-1">
-                <AlertTriangle className="w-3.5 h-3.5" />
-                <span>سهم طلا کمتر از هدف است (خرید طلا در اولویت است)</span>
-              </span>
-            ) : isCryptoUnderweight ? (
-              <span className="text-indigo-400 font-bold flex items-center gap-1">
-                <AlertTriangle className="w-3.5 h-3.5" />
-                <span>سهم کریپتو کمتر از هدف است (خرید کریپتو در اولویت است)</span>
-              </span>
-            ) : (
-              <span className="text-emerald-400 font-bold flex items-center gap-1">
-                <CheckCircle2 className="w-3.5 h-3.5" />
-                <span>سبد در تعادل ایده‌آل است</span>
-              </span>
-            )}
-          </div>
-        </div>
-
       </div>
 
-      {/* 2. PORTFOLIO ALLOCATION DONUT CHART */}
-      <div className="p-5 rounded-3xl bg-slate-900/80 border border-slate-800/90 shadow-xl space-y-4">
+      {/* 2. PORTFOLIO 80/20 ALLOCATION DONUT CHART */}
+      <div className="glass-card p-5 border border-slate-800 shadow-xl space-y-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-xl bg-gold-500/10 text-gold-400 flex items-center justify-center font-bold text-sm">
+            <div className="w-8 h-8 rounded-xl bg-gold-500/20 text-gold-400 flex items-center justify-center font-bold text-sm">
               <PieChart className="w-4 h-4" />
             </div>
-            <h3 className="text-sm font-black text-slate-100">
-              ترکیب و سهم دارایی‌ها
-            </h3>
+            <div>
+              <h3 className="text-sm font-black text-slate-100">ترکیب سبد دارایی و وضعیت تعادل</h3>
+              <p className="text-[11px] text-slate-400">
+                هدف: {toPersianDigits(settings.goldPercent)}% طلا و مسکوکات / {toPersianDigits(settings.cryptoPercent)}% ارزهای دیجیتال
+              </p>
+            </div>
           </div>
-          <span className="text-[11px] text-slate-400">
-            طلا: {toPersianDigits(settings.goldPercent)}% • کریپتو: {toPersianDigits(settings.cryptoPercent)}%
-          </span>
+
+          <button
+            onClick={() => onNavigateToTab('settings')}
+            className="text-[11px] text-slate-400 hover:text-gold-400 font-bold transition-colors"
+          >
+            تغییر نسبت‌ها
+          </button>
         </div>
 
         <PortfolioDonutChart
           items={chartItems}
-          centerTitle="مجموع دارایی"
-          centerSubtitle={`${toPersianDigits(chartItems.length)} بخش`}
-          size={200}
+          centerTitle="ارزش سبد"
+          centerSubtitle={`${formatToman(totalPortfolioValue)} ت`}
+          size={210}
           strokeWidth={22}
         />
+
+        {/* Health status banner */}
+        <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-800 text-xs">
+          <div className={`p-2.5 rounded-xl border flex items-center gap-2 ${
+            isGoldUnderweight
+              ? 'bg-amber-950/30 border-gold-500/40 text-gold-300'
+              : 'bg-slate-900/60 border-slate-800 text-slate-300'
+          }`}>
+            <span className={`w-2 h-2 rounded-full ${isGoldUnderweight ? 'bg-gold-400 animate-pulse' : 'bg-emerald-400'}`} />
+            <span>
+              طلا: {formatPercent(goldPercentActual)} {isGoldUnderweight && '📉 نیاز به خرید'}
+            </span>
+          </div>
+
+          <div className={`p-2.5 rounded-xl border flex items-center gap-2 ${
+            isCryptoUnderweight
+              ? 'bg-indigo-950/30 border-indigo-500/40 text-indigo-300'
+              : 'bg-slate-900/60 border-slate-800 text-slate-300'
+          }`}>
+            <span className={`w-2 h-2 rounded-full ${isCryptoUnderweight ? 'bg-indigo-400 animate-pulse' : 'bg-emerald-400'}`} />
+            <span>
+              کریپتو: {formatPercent(cryptoPercentActual)} {isCryptoUnderweight && '📉 نیاز به خرید'}
+            </span>
+          </div>
+        </div>
       </div>
 
-      {/* 3. CAPITAL INPUT & SAVINGS ALLOCATOR */}
+      {/* 3. CAPITAL INPUT CARD */}
       <CapitalInputCard
         inputAmount={totalInputAmount}
         setInputAmount={setTotalInputAmount}
@@ -269,142 +349,94 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         cryptoBuyAmount={calculationResult.cryptoBuyAmount}
       />
 
-      {/* 4. SMART BUY RECOMMENDATIONS (GOLD & CRYPTO BREAKDOWN) */}
-      {calculationResult.totalSavingsAmount > 0 && (
+      {/* 4. BUYING RECOMMENDATIONS */}
+      {totalInputAmount > 0 && calculationResult.totalSavingsAmount > 0 && (
         <div className="space-y-4 animate-fadeIn">
           
-          {/* Section Header */}
-          <div className="flex items-center justify-between px-1">
-            <div className="flex items-center gap-2">
-              <Sparkles className="w-4 h-4 text-gold-400 animate-pulse" />
-              <h3 className="text-sm font-black text-slate-100">
-                دستور خرید هوشمند برای پس‌انداز این ماه
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-sm font-black text-slate-100 flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-gold-400" />
+                <span>پیشنهاد هوشمند خرید دارایی‌ها</span>
               </h3>
-            </div>
-            <span className="text-xs font-bold text-gold-400">
-              {formatToman(calculationResult.totalSavingsAmount)} ت
-            </span>
-          </div>
-
-          {/* Gold Buy Action Card */}
-          <GoldBuyCard
-            goldBuyAmount={calculationResult.goldBuyAmount}
-            goldPercent={settings.goldPercent}
-          />
-
-          {/* Crypto Buy Breakdown Cards */}
-          {calculationResult.cryptoBuys.length > 0 && (
-            <div className="p-4 sm:p-5 rounded-3xl bg-slate-900/90 border border-indigo-500/30 shadow-xl space-y-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-xl bg-indigo-500/20 text-indigo-400 flex items-center justify-center font-bold text-sm">
-                    <Coins className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <h4 className="text-xs font-black text-slate-100">
-                      خرید رمزارزها در صرافی (نوبیتکس)
-                    </h4>
-                    <p className="text-[10px] text-slate-400">
-                      مبلغ تخصیص‌یافته: {formatToman(calculationResult.cryptoBuyAmount)} تومان
-                    </p>
-                  </div>
-                </div>
-
-                <button
-                  onClick={() => onNavigateToTab('crypto')}
-                  className="text-[11px] text-indigo-400 hover:text-indigo-300 font-bold flex items-center gap-0.5"
-                >
-                  <span>مشاهده بازار</span>
-                  <ChevronLeft className="w-3.5 h-3.5" />
-                </button>
-              </div>
-
-              {/* Coin Cards */}
-              <div className="space-y-2 pt-1">
-                {calculationResult.cryptoBuys.map((coin) => {
-                  const asset = cryptoAssets.find((a) => a.symbol.toLowerCase() === coin.symbol.toLowerCase());
-                  const unitPrice = asset?.unitPrice || 0;
-                  const coinQtyToBuy = unitPrice > 0 ? (coin.suggestedBuy / unitPrice).toFixed(6) : '0';
-
-                  return (
-                    <div
-                      key={coin.id}
-                      className="p-3 rounded-2xl bg-slate-950 border border-slate-800 flex items-center justify-between gap-3 hover:border-slate-700 transition-all"
-                    >
-                      <div className="flex items-center gap-2.5 min-w-0">
-                        <div
-                          className="w-3 h-3 rounded-full shrink-0"
-                          style={{ backgroundColor: coin.color }}
-                        />
-                        <div className="min-w-0">
-                          <span className="text-xs font-bold text-slate-200 block truncate">
-                            {coin.name} ({coin.symbol})
-                          </span>
-                          <span className="text-[10px] text-slate-400 block">
-                            سهم هدف: {toPersianDigits(coin.targetPercent)}%
-                          </span>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-2 shrink-0">
-                        <div className="text-left space-y-0.5">
-                          <span className="text-xs font-black text-indigo-400 block">
-                            {formatToman(coin.suggestedBuy)} تومان
-                          </span>
-                          {unitPrice > 0 && (
-                            <span className="text-[10px] text-slate-400 font-mono block dir-ltr">
-                              ≈ {coinQtyToBuy} {coin.symbol}
-                            </span>
-                          )}
-                        </div>
-
-                        <button
-                          onClick={() =>
-                            handleCopy(
-                              coin.id,
-                              coin.suggestedBuy.toString(),
-                              `مبلغ خرید ${coin.name} کپی شد!`
-                            )
-                          }
-                          className="p-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-indigo-400 border border-slate-800 transition-all touch-target"
-                          title="کپی مبلغ خرید"
-                        >
-                          {copiedId === coin.id ? (
-                            <Check className="w-3.5 h-3.5 text-emerald-400" />
-                          ) : (
-                            <Copy className="w-3.5 h-3.5" />
-                          )}
-                        </button>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-
-            </div>
-          )}
-
-          {/* Apply Purchases Action Button */}
-          <div className="p-4 rounded-3xl bg-gradient-to-r from-gold-500/15 via-indigo-500/15 to-gold-500/15 border border-gold-500/30 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-lg">
-            <div className="space-y-0.5 text-center sm:text-right">
-              <span className="text-xs font-black text-slate-100 block">
-                خریدها را در سبد دارایی اعمال کنم؟
-              </span>
               <p className="text-[11px] text-slate-400">
-                واحدهای طلای خریداری‌شده و ارزها به موجودی حساب شما افزوده می‌شوند.
+                بر اساس فرمول بازتعادل جهت رسیدن سبد به نسبت {toPersianDigits(settings.goldPercent)} / {toPersianDigits(settings.cryptoPercent)}
               </p>
             </div>
 
             <button
               onClick={() => {
-                triggerHaptic('success');
+                triggerHaptic('medium');
                 onApplyPurchases();
               }}
-              className="w-full sm:w-auto px-6 py-3 rounded-2xl bg-gradient-to-r from-gold-500 to-amber-600 hover:from-gold-400 hover:to-amber-500 text-slate-950 font-black text-xs flex items-center justify-center gap-2 transition-all interactive-tap shadow-gold-glow touch-target"
+              className="px-3.5 py-2 rounded-2xl bg-gradient-to-r from-amber-400 to-gold-500 hover:from-amber-300 hover:to-gold-400 text-slate-950 font-black text-xs transition-all shadow-gold-glow interactive-tap"
             >
-              <CheckCircle2 className="w-4 h-4" />
-              <span>اعمال خریدها به موجودی</span>
+              ثبت همه خریدها
             </button>
+          </div>
+
+          {/* Gold Buy Card */}
+          <GoldBuyCard
+            goldBuyAmount={calculationResult.goldBuyAmount}
+            goldPercent={settings.goldPercent}
+          />
+
+          {/* Crypto Buy Cards */}
+          <div className="space-y-2.5">
+            <h4 className="text-xs font-bold text-slate-300 flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-indigo-500" />
+              <span>ارزهای دیجیتال پیشنهادی برای خرید:</span>
+            </h4>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {calculationResult.cryptoBuys.map((buy) => {
+                const isCopied = copiedId === buy.id;
+                return (
+                  <div
+                    key={buy.id}
+                    className={`p-4 rounded-3xl border transition-all ${
+                      buy.suggestedBuy > 0
+                        ? 'bg-slate-900 border-indigo-500/40 shadow-lg'
+                        : 'bg-slate-950/60 border-slate-800 opacity-60'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span
+                          className="w-3 h-3 rounded-full shrink-0"
+                          style={{ backgroundColor: buy.color }}
+                        />
+                        <span className="font-black text-sm text-slate-100">{buy.symbol}</span>
+                        <span className="text-[10px] text-slate-400">{buy.name}</span>
+                      </div>
+
+                      <span className="text-[11px] font-bold text-indigo-400">
+                        وزن هدف: {toPersianDigits(buy.targetPercent)}%
+                      </span>
+                    </div>
+
+                    <div className="mt-3 pt-3 border-t border-slate-800/80 flex items-center justify-between">
+                      <div>
+                        <span className="text-[10px] text-slate-400 block">مبلغ خرید پیشنهادی:</span>
+                        <span className={`text-sm font-black ${buy.suggestedBuy > 0 ? 'text-indigo-300' : 'text-slate-500'}`}>
+                          {formatToman(buy.suggestedBuy)} تومان
+                        </span>
+                      </div>
+
+                      {buy.suggestedBuy > 0 && (
+                        <button
+                          onClick={() => handleCopy(buy.id, String(buy.suggestedBuy), `مبلغ ${buy.symbol} کپی شد`)}
+                          className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-indigo-300 border border-slate-700 transition-all touch-target"
+                          title="کپی مبلغ"
+                        >
+                          {isCopied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
 
         </div>

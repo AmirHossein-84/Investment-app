@@ -136,6 +136,8 @@ const AppContent: React.FC = () => {
             calculationResult={calculationResult}
             cryptoAssets={cryptoAssets}
             goldHoldingValue={totalGoldValue}
+            physicalGoldValue={totalPhysicalGoldValueTomans}
+            bourseGoldValue={totalGoldMarketValueTomans}
             totalCryptoValue={totalCryptoValue}
             totalPortfolioValue={totalPortfolioValue}
             tomanCashBalance={tomanCashBalance}
@@ -156,7 +158,11 @@ const AppContent: React.FC = () => {
         {/* TAB 2: GOLD & STOCK MARKET (TSETMC) */}
         {(activeTab === 'gold' || (activeTab as string) === 'market') && (
           <div className="animate-fadeIn">
-            <MarketInstrumentsView />
+            <MarketInstrumentsView
+              physicalGoldItems={physicalGoldItems}
+              totalPhysicalGoldValueTomans={totalPhysicalGoldValueTomans}
+              onNavigateToHoldings={() => setActiveTab('holdings')}
+            />
           </div>
         )}
 
