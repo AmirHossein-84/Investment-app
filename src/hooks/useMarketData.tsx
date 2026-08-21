@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import {
   MarketInstrument,
   UserMarketHolding,
@@ -24,7 +24,40 @@ export interface CombinedMarketItem {
   profitPercent?: number;
 }
 
-export function useMarketData() {
+export interface MarketDataContextType {
+  instruments: MarketInstrument[];
+  holdings: UserMarketHolding[];
+  quotes: Record<string, MarketQuote>;
+  marketStatus: MarketStatus | null;
+  isLoading: boolean;
+  isRefreshing: boolean;
+  lastRefreshedAt: number;
+  combinedItems: CombinedMarketItem[];
+  totalMarketValueTomans: number;
+  totalGoldMarketValueTomans: number;
+  totalMarketCostTomans: number;
+  addInstrumentAndHolding: (
+    searchResult: SearchInstrumentResult,
+    quantity: number,
+    averageBuyPriceTomans?: number
+  ) => void;
+  addUnitsToGoldInstrument: (
+    symbol: string,
+    unitsToAdd: number,
+    priceTomans?: number
+  ) => void;
+  updateHolding: (
+    holdingId: string,
+    quantity: number,
+    averageBuyPriceTomans?: number
+  ) => void;
+  removeHolding: (holdingId: string) => void;
+  refreshQuotes: (isManual?: boolean) => Promise<void>;
+}
+
+const MarketDataContext = createContext<MarketDataContextType | null>(null);
+
+export const MarketDataProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [instruments, setInstruments] = useState<MarketInstrument[]>(() => {
     const loaded = loadMarketInstruments();
     return loaded.map((inst) => {
@@ -95,7 +128,6 @@ export function useMarketData() {
   // Polling: Auto-refresh every 60 seconds
   useEffect(() => {
     const interval = setInterval(() => {
-      // If there are instruments to monitor, refresh quotes
       if (instruments.length > 0) {
         refreshQuotes(false);
       }
@@ -335,22 +367,56 @@ export function useMarketData() {
     return combinedItems.reduce((sum, item) => sum + (item.totalCostTomans || 0), 0);
   }, [combinedItems]);
 
-  return {
-    instruments,
-    holdings,
-    quotes,
-    marketStatus,
-    isLoading,
-    isRefreshing,
-    lastRefreshedAt,
-    combinedItems,
-    totalMarketValueTomans,
-    totalGoldMarketValueTomans,
-    totalMarketCostTomans,
-    addInstrumentAndHolding,
-    addUnitsToGoldInstrument,
-    updateHolding,
-    removeHolding,
-    refreshQuotes,
-  };
+  const contextValue = useMemo<MarketDataContextType>(
+    () => ({
+      instruments,
+      holdings,
+      quotes,
+      marketStatus,
+      isLoading,
+      isRefreshing,
+      lastRefreshedAt,
+      combinedItems,
+      totalMarketValueTomans,
+      totalGoldMarketValueTomans,
+      totalMarketCostTomans,
+      addInstrumentAndHolding,
+      addUnitsToGoldInstrument,
+      updateHolding,
+      removeHolding,
+      refreshQuotes,
+    }),
+    [
+      instruments,
+      holdings,
+      quotes,
+      marketStatus,
+      isLoading,
+      isRefreshing,
+      lastRefreshedAt,
+      combinedItems,
+      totalMarketValueTomans,
+      totalGoldMarketValueTomans,
+      totalMarketCostTomans,
+      addInstrumentAndHolding,
+      addUnitsToGoldInstrument,
+      updateHolding,
+      removeHolding,
+      refreshQuotes,
+    ]
+  );
+
+  return (
+    <MarketDataContext.Provider value={contextValue}>
+      {children}
+    </MarketDataContext.Provider>
+  );
+};
+
+export function useMarketData(): MarketDataContextType {
+  const context = useContext(MarketDataContext);
+  if (!context) {
+    throw new Error('useMarketData must be used within a MarketDataProvider');
+  }
+  return context;
 }

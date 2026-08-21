@@ -1,6 +1,6 @@
 import React, { useState, useCallback } from 'react';
 import { useInvestmentState } from './hooks/useInvestmentState';
-import { useMarketData } from './hooks/useMarketData';
+import { MarketDataProvider, useMarketData } from './hooks/useMarketData';
 import { useNobitex } from './hooks/useNobitex';
 import { useTheme } from './hooks/useTheme';
 import { Header } from './components/layout/Header';
@@ -14,14 +14,13 @@ import { BackupRestore } from './components/settings/BackupRestore';
 import { TransactionHistory } from './components/history/TransactionHistory';
 import { CheckCircle, Info, AlertCircle } from 'lucide-react';
 
-export const App: React.FC = () => {
+const AppContent: React.FC = () => {
   const { isDark, toggleTheme } = useTheme();
   const [activeGoldFund, setActiveGoldFund] = useState<string>('عیار');
   const [isRefreshingAll, setIsRefreshingAll] = useState(false);
 
   const {
     totalGoldMarketValueTomans,
-    totalMarketValueTomans,
     instruments,
     quotes,
     addUnitsToGoldInstrument,
@@ -89,8 +88,9 @@ export const App: React.FC = () => {
   const goldEtfUnitPrice = activeGoldQuote?.lastPriceTomans || 35000;
   const goldEtfUnitChange = activeGoldQuote?.priceChangePercent || 0;
 
+  const totalCombinedGoldValue = (goldHolding.currentHoldingValue || 0) + totalGoldMarketValueTomans;
   const totalCryptoValue = cryptoAssets.reduce((sum, a) => sum + (a.currentHoldingValue || 0), 0);
-  const totalPortfolioValue = totalGoldMarketValueTomans + totalCryptoValue;
+  const totalPortfolioValue = totalCombinedGoldValue + totalCryptoValue;
 
   // Unified pull-to-refresh handler across both TSETMC and Nobitex
   const handleRefreshAll = async () => {
@@ -126,7 +126,7 @@ export const App: React.FC = () => {
             setTotalInputAmount={setInputAmount}
             calculationResult={calculationResult}
             cryptoAssets={cryptoAssets}
-            goldHoldingValue={totalGoldMarketValueTomans}
+            goldHoldingValue={totalCombinedGoldValue}
             totalCryptoValue={totalCryptoValue}
             totalPortfolioValue={totalPortfolioValue}
             tomanCashBalance={tomanCashBalance}
@@ -240,6 +240,14 @@ export const App: React.FC = () => {
       )}
 
     </div>
+  );
+};
+
+export const App: React.FC = () => {
+  return (
+    <MarketDataProvider>
+      <AppContent />
+    </MarketDataProvider>
   );
 };
 
