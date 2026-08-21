@@ -63,6 +63,9 @@ export class TsetmcMarketDataProvider implements MarketDataProvider {
   private readonly minRequestIntervalMs = 250; // Max 4 requests per second
 
   constructor() {
+    // In local dev, use Vite proxy to avoid CORS; in production web / native apps, call direct from user's IP
+    const isLocalhost = typeof window !== 'undefined' && window.location.hostname === 'localhost';
+    this.baseUrl = isLocalhost ? '/api/tsetmc' : this.fallbackUrl;
     // In native mobile apps (Capacitor Android / iOS), call direct; in web browsers, use same-origin proxy
     const isNative = typeof window !== 'undefined' && Capacitor.isNativePlatform();
     this.baseUrl = isNative ? this.fallbackUrl : '/api/tsetmc';
