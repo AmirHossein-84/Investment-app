@@ -104,6 +104,7 @@ export type ActiveTab =
   | 'gold'
   | 'crypto'
   | 'holdings'
+  | 'sell'
   | 'settings'
   | 'history'
   | 'calculator'

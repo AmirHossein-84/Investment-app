@@ -10,10 +10,12 @@ import { DashboardView } from './components/dashboard/DashboardView';
 import { CryptoMarketView } from './components/crypto/CryptoMarketView';
 import { MarketInstrumentsView } from './components/market/MarketInstrumentsView';
 import { HoldingsManager } from './components/holdings/HoldingsManager';
+import { SellView } from './components/sell/SellView';
 import { PercentagesConfig } from './components/settings/PercentagesConfig';
 import { BackupRestore } from './components/settings/BackupRestore';
 import { TransactionHistory } from './components/history/TransactionHistory';
 import { CheckCircle, Info, AlertCircle } from 'lucide-react';
+import { PhysicalGoldType } from './types/investment';
 
 const AppContent: React.FC = () => {
   const { isDark, toggleTheme } = useTheme();
@@ -33,7 +35,10 @@ const AppContent: React.FC = () => {
     totalGoldMarketValueTomans,
     instruments,
     quotes,
+    combinedItems,
     addUnitsToGoldInstrument,
+    updateHolding,
+    removeHolding,
     refreshQuotes,
   } = useMarketData();
 
@@ -98,6 +103,33 @@ const AppContent: React.FC = () => {
     externalGoldValueTomans: totalGoldMarketValueTomans,
     onApplyGoldPurchase: handleApplyGoldPurchase,
   });
+
+  // Handlers to deduct sold gold units from holdings
+  const handleDeductBourseGold = useCallback(
+    (symbol: string, unitsToDeduct: number) => {
+      const item = combinedItems.find((i) => i.instrument.symbol === symbol);
+      if (item && item.holding) {
+        const newQty = Math.max(0, item.holding.quantity - unitsToDeduct);
+        if (newQty === 0) {
+          removeHolding(item.holding.id);
+        } else {
+          updateHolding(item.holding.id, newQty, item.holding.averageBuyPriceTomans);
+        }
+      }
+    },
+    [combinedItems, updateHolding, removeHolding]
+  );
+
+  const handleDeductPhysicalGold = useCallback(
+    (id: PhysicalGoldType, quantityToDeduct: number) => {
+      const item = physicalGoldItems.find((i) => i.id === id);
+      if (item) {
+        const newQty = Math.max(0, Number((item.quantity - quantityToDeduct).toFixed(2)));
+        updatePhysicalGoldQuantity(id, newQty);
+      }
+    },
+    [physicalGoldItems, updatePhysicalGoldQuantity]
+  );
 
   // Calculate live Gold ETF unit price and 24h change
   const activeGoldInst = instruments.find((i) => i.symbol === activeGoldFund);
@@ -230,7 +262,27 @@ const AppContent: React.FC = () => {
           </div>
         )}
 
-        {/* TAB 5: SETTINGS & HISTORY */}
+        {/* TAB 5: SELL & REBALANCE */}
+        {activeTab === 'sell' && (
+          <div className="animate-fadeIn">
+            <SellView
+              cryptoAssets={cryptoAssets}
+              bourseItems={combinedItems}
+              physicalGoldItems={physicalGoldItems}
+              totalPortfolioValue={totalPortfolioValue}
+              settings={settings}
+              currencyMode={currencyMode}
+              usdtRateTomans={usdtRateTomans}
+              formatCurrency={formatCurrency}
+              toDisplayValue={toDisplayValue}
+              onDeductBourseGold={handleDeductBourseGold}
+              onDeductPhysicalGold={handleDeductPhysicalGold}
+              onNotify={showNotification}
+            />
+          </div>
+        )}
+
+        {/* TAB 6: SETTINGS & HISTORY */}
         {activeTab === 'settings' && (
           <div className="space-y-5 animate-fadeIn">
             <PercentagesConfig
