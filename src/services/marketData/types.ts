@@ -7,7 +7,7 @@ export type AssetType = 'etf' | 'stock' | 'commodity' | 'bond' | 'other';
 export interface MarketInstrument {
   id: string; // Internal UUID or unique ID
   provider: 'tsetmc' | 'manual';
-  providerInstrumentId: string; // TSETMC InsCode (e.g. "65883838195688438" for عیار)
+  providerInstrumentId: string; // TSETMC InsCode (e.g. "34144395039913458" for عیار)
   symbol: string; // Persian symbol (e.g. "عیار")
   name: string; // Full company / ETF name (e.g. "صندوق س. پشتوانه طلای لوتوس-ت")
   assetType: AssetType;

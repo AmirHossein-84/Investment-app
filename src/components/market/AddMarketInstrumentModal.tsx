@@ -18,7 +18,7 @@ interface AddMarketInstrumentModalProps {
 }
 
 const POPULAR_GOLD_ETFS: SearchInstrumentResult[] = [
-  { symbol: 'عیار', name: 'صندوق س. پشتوانه طلای لوتوس', insCode: '65883838195688438', assetType: 'etf' },
+  { symbol: 'عیار', name: 'صندوق س. پشتوانه طلای لوتوس', insCode: '34144395039913458', assetType: 'etf' },
   { symbol: 'طلا', name: 'صندوق س. پشتوانه طلای زرافشان', insCode: '26656708390708948', assetType: 'etf' },
   { symbol: 'کهربا', name: 'صندوق س. طلا کهربا', insCode: '35700344742885862', assetType: 'etf' },
   { symbol: 'زر', name: 'صندوق س. زرین آگاه', insCode: '58774780517865203', assetType: 'etf' },

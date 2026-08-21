@@ -13,7 +13,7 @@ describe('TSETMC Market Data System', () => {
     const instrument: MarketInstrument = {
       id: 'inst_ayar_1',
       provider: 'tsetmc',
-      providerInstrumentId: '65883838195688438',
+      providerInstrumentId: '34144395039913458',
       symbol: 'عیار',
       name: 'صندوق س. پشتوانه طلای لوتوس-ت',
       assetType: 'etf',

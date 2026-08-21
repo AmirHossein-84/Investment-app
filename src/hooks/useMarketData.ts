@@ -28,10 +28,10 @@ export function useMarketData() {
   const [instruments, setInstruments] = useState<MarketInstrument[]>(() => {
     const loaded = loadMarketInstruments();
     return loaded.map((inst) => {
-      if (inst.symbol === 'عیار' && inst.providerInstrumentId !== '65883838195688438') {
+      if (inst.symbol === 'عیار' && inst.providerInstrumentId !== '34144395039913458') {
         return {
           ...inst,
-          providerInstrumentId: '65883838195688438',
+          providerInstrumentId: '34144395039913458',
           name: 'صندوق س. پشتوانه طلای لوتوس',
         };
       }
@@ -207,7 +207,7 @@ export function useMarketData() {
         const newInst: MarketInstrument = {
           id: newInstId,
           provider: 'tsetmc',
-          providerInstrumentId: symbol === 'عیار' ? '65883838195688438' : '26656708390708948',
+          providerInstrumentId: symbol === 'عیار' ? '34144395039913458' : '26656708390708948',
           symbol,
           name: symbol === 'عیار' ? 'صندوق س. پشتوانه طلای لوتوس-ت' : `صندوق طلای ${symbol}`,
           assetType: 'etf',

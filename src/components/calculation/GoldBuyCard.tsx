@@ -12,7 +12,7 @@ interface GoldBuyCardProps {
 
 // Built-in popular TSETMC Gold Funds for immediate selection if user hasn't added one yet
 const DEFAULT_GOLD_ETFS: { symbol: string; name: string; insCode: string }[] = [
-  { symbol: 'عیار', name: 'صندوق س. پشتوانه طلای لوتوس', insCode: '65883838195688438' },
+  { symbol: 'عیار', name: 'صندوق س. پشتوانه طلای لوتوس', insCode: '34144395039913458' },
   { symbol: 'طلا', name: 'صندوق س. پشتوانه طلای زرافشان', insCode: '26656708390708948' },
   { symbol: 'کهربا', name: 'صندوق س. طلا کهربا', insCode: '35700344742885862' },
   { symbol: 'زر', name: 'صندوق س. زرین آگاه', insCode: '58774780517865203' },
