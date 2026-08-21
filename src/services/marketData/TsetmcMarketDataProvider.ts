@@ -5,6 +5,7 @@ import {
   MarketQuote,
   MarketStatus,
   SearchInstrumentResult,
+  HistoricalPricePoint,
   AssetType,
 } from './types';
 
@@ -54,13 +55,13 @@ export class TsetmcMarketDataProvider implements MarketDataProvider {
   private readonly baseUrl: string;
   private readonly fallbackUrl = 'https://cdn.tsetmc.com/api';
   
-  // Cache to avoid spamming upstream
+  // Cache to avoid spamming upstream (25 seconds TTL)
   private quoteCache: Map<string, { quote: MarketQuote; fetchedAt: number }> = new Map();
-  private readonly cacheTtlMs = 25000; // 25 seconds cache
+  private readonly cacheTtlMs = 25000;
   
-  // Rate-limiting queue
+  // Rate-limiting queue (Max 4 requests per second)
   private lastRequestTime = 0;
-  private readonly minRequestIntervalMs = 250; // Max 4 requests per second
+  private readonly minRequestIntervalMs = 250;
 
   constructor() {
     // In native mobile apps (Capacitor Android / iOS), call direct; in web browsers, use same-origin proxy
@@ -92,7 +93,7 @@ export class TsetmcMarketDataProvider implements MarketDataProvider {
 
       return await response.json();
     } catch (err) {
-      // If primary failed (e.g. CORS or proxy issue), try direct fallback URL
+      // If primary failed (e.g. CORS or proxy issue in browser dev), try direct fallback URL
       if (this.baseUrl !== this.fallbackUrl) {
         try {
           const directUrl = `${this.fallbackUrl}${urlPath}`;
@@ -101,7 +102,7 @@ export class TsetmcMarketDataProvider implements MarketDataProvider {
             return await fallbackRes.json();
           }
         } catch {
-          // Ignore and throw original error
+          // Ignore fallback error and throw original
         }
       }
       throw err;
@@ -143,29 +144,39 @@ export class TsetmcMarketDataProvider implements MarketDataProvider {
 
   /**
    * Get single quote by Instrument definition
+   * Handles both Market Open (live traded price) and Market Closed (latest available closing price)
    */
   async getQuote(instrument: MarketInstrument): Promise<MarketQuote> {
     const insCode = instrument.providerInstrumentId;
     const now = Date.now();
 
-    // Check cache
+    // Check memory cache
     const cached = this.quoteCache.get(insCode);
     if (cached && now - cached.fetchedAt < this.cacheTtlMs) {
       return cached.quote;
     }
 
     try {
-      const data = await this.fetchWithThrottle(`/ClosingPrice/GetClosingPriceInfo/${insCode}`);
-      const info = data?.closingPriceInfo;
+      const [quoteData, status] = await Promise.all([
+        this.fetchWithThrottle(`/ClosingPrice/GetClosingPriceInfo/${insCode}`),
+        this.getMarketStatus(),
+      ]);
 
+      const info = quoteData?.closingPriceInfo;
       if (!info) {
         throw new Error(`Quote not available for insCode ${insCode}`);
       }
 
       // Extract raw Rial prices (TSETMC keys)
-      const lastPriceRials = Number(info.pDrCotVal ?? info.pl ?? 0);
-      const closingPriceRials = Number(info.pClosing ?? info.pc ?? lastPriceRials);
-      const yesterdayPriceRials = Number(info.priceYesterday ?? info.py ?? closingPriceRials);
+      // When market is open: pDrCotVal is the last traded price
+      // When market is closed: pClosing / pDrCotVal / priceYesterday is the latest available closing price
+      const rawLastPrice = Number(info.pDrCotVal ?? info.pl ?? 0);
+      const rawClosingPrice = Number(info.pClosing ?? info.pc ?? rawLastPrice);
+      const rawYesterdayPrice = Number(info.priceYesterday ?? info.py ?? rawClosingPrice);
+      
+      const lastPriceRials = rawLastPrice > 0 ? rawLastPrice : rawClosingPrice;
+      const closingPriceRials = rawClosingPrice > 0 ? rawClosingPrice : lastPriceRials;
+      const yesterdayPriceRials = rawYesterdayPrice;
       const minPriceRials = Number(info.priceMin ?? 0);
       const maxPriceRials = Number(info.priceMax ?? 0);
 
@@ -207,6 +218,7 @@ export class TsetmcMarketDataProvider implements MarketDataProvider {
         tradeDate: dateStr,
         lastFetchedAt: now,
         isStale: false,
+        marketState: status.isOpen ? 'open' : 'closed',
       };
 
       // Store in cache
@@ -216,11 +228,12 @@ export class TsetmcMarketDataProvider implements MarketDataProvider {
     } catch (error) {
       console.warn(`[TSETMC] Failed to fetch quote for ${instrument.symbol} (${insCode}):`, error);
       
-      // If we have an expired cache, return it with isStale: true
+      // If we have a previously cached quote, return it with isStale: true
       if (cached) {
         return {
           ...cached.quote,
           isStale: true,
+          marketState: 'stale',
         };
       }
 
@@ -240,12 +253,13 @@ export class TsetmcMarketDataProvider implements MarketDataProvider {
         priceChangePercent: 0,
         lastFetchedAt: now,
         isStale: true,
+        marketState: 'unavailable',
       };
     }
   }
 
   /**
-   * Get multiple quotes concurrently
+   * Get multiple quotes concurrently with throttling
    */
   async getQuotes(instruments: MarketInstrument[]): Promise<Record<string, MarketQuote>> {
     const results: Record<string, MarketQuote> = {};
@@ -258,6 +272,30 @@ export class TsetmcMarketDataProvider implements MarketDataProvider {
 
     await Promise.allSettled(promises);
     return results;
+  }
+
+  /**
+   * Get historical closing prices for an instrument
+   */
+  async getHistoricalData(instrument: MarketInstrument, days: number = 30): Promise<HistoricalPricePoint[]> {
+    const insCode = instrument.providerInstrumentId;
+    try {
+      const data = await this.fetchWithThrottle(`/ClosingPrice/GetClosingPriceDailyList/${insCode}/${days}`);
+      const list = data?.closingPriceDaily || [];
+      if (!Array.isArray(list)) return [];
+
+      return list.map((item: any) => ({
+        date: String(item.dEven || ''),
+        closePriceTomans: Math.round(Number(item.pClosing || 0) / 10),
+        lastPriceTomans: Math.round(Number(item.pDrCotVal || item.pClosing || 0) / 10),
+        yesterdayPriceTomans: Math.round(Number(item.priceYesterday || 0) / 10),
+        volume: Number(item.qTotTran5J || 0),
+        tradeCount: Number(item.zTotTran || 0),
+      }));
+    } catch (err) {
+      console.warn(`[TSETMC] Failed to fetch history for ${instrument.symbol}:`, err);
+      return [];
+    }
   }
 
   /**
@@ -285,13 +323,13 @@ export class TsetmcMarketDataProvider implements MarketDataProvider {
 
       const timeFormatted = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
 
-      let message = 'بازار بسته است';
+      let message = 'بازار بسته است — آخرین قیمت‌های ثبت‌شده نمایش داده می‌شود';
       if (isRegularSession) {
-        message = 'جلسه معاملاتی بورس و فرابورس فعال است';
+        message = 'جلسه معاملاتی بورس و فرابورس فعال است (قیمت‌های لحظه‌ای)';
       } else if (isExtendedGoldSession) {
         message = 'معاملات صندوق‌های طلا و کالایی فعال است';
       } else if (!isTradingDay) {
-        message = 'امروز تعطیل رسمی / پایان هفته بازار است';
+        message = 'امروز تعطیل رسمی / پایان هفته بازار است — آخرین قیمت‌های رسمی';
       }
 
       return {

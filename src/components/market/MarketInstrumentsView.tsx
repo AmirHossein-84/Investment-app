@@ -3,17 +3,15 @@ import {
   TrendingUp,
   Plus,
   RefreshCw,
-  Edit3,
-  Scale,
   Clock,
-  CheckCircle2,
-  AlertCircle,
   ArrowUpRight,
   ArrowDownRight,
-  Sparkles,
-  Info,
   Coins,
   ShieldCheck,
+  CheckCircle2,
+  AlertCircle,
+  Activity,
+  Layers,
 } from 'lucide-react';
 import { useMarketData, CombinedMarketItem } from '../../hooks/useMarketData';
 import { PortfolioDonutChart, DonutChartItem } from '../common/PortfolioDonutChart';
@@ -23,6 +21,31 @@ import { formatToman, formatPercent, toPersianDigits, getPersianFormattedDate } 
 import { triggerHaptic } from '../../utils/haptics';
 import { AddMarketInstrumentModal } from './AddMarketInstrumentModal';
 import { EditMarketHoldingModal } from './EditMarketHoldingModal';
+import { AssetType } from '../../services/marketData/types';
+
+function getAssetTypeBadge(type: AssetType, symbol: string): { label: string; bg: string; text: string; border: string } {
+  if (
+    symbol.includes('عیار') ||
+    symbol.includes('طلا') ||
+    symbol.includes('کهربا') ||
+    symbol.includes('زر') ||
+    symbol.includes('گوهر') ||
+    symbol.includes('زرفام')
+  ) {
+    return { label: 'صندوق طلا', bg: 'bg-amber-500/10', text: 'text-gold-400', border: 'border-gold-500/30' };
+  }
+  switch (type) {
+    case 'etf':
+      return { label: 'صندوق ETF', bg: 'bg-indigo-500/10', text: 'text-indigo-400', border: 'border-indigo-500/30' };
+    case 'bond':
+      return { label: 'اوراق بهادار', bg: 'bg-blue-500/10', text: 'text-blue-400', border: 'border-blue-500/30' };
+    case 'commodity':
+      return { label: 'کالایی', bg: 'bg-emerald-500/10', text: 'text-emerald-400', border: 'border-emerald-500/30' };
+    case 'stock':
+    default:
+      return { label: 'سهام بورس', bg: 'bg-slate-800', text: 'text-slate-300', border: 'border-slate-700' };
+  }
+}
 
 export const MarketInstrumentsView: React.FC = () => {
   const {
@@ -56,11 +79,11 @@ export const MarketInstrumentsView: React.FC = () => {
     second: '2-digit',
   });
 
-  // Donut chart items from user gold holdings
+  // Donut chart items from user holdings
   const donutItems: DonutChartItem[] = combinedItems
     .filter((item) => (item.currentValueTomans || 0) > 0)
     .map((item, idx) => {
-      const colors = ['#D4AF37', '#EAB308', '#F59E0B', '#D97706', '#B45309', '#FBBF24'];
+      const colors = ['#D4AF37', '#EAB308', '#6366F1', '#3B82F6', '#10B981', '#EC4899', '#8B5CF6'];
       return {
         id: item.instrument.symbol,
         label: item.instrument.name,
@@ -88,7 +111,7 @@ export const MarketInstrumentsView: React.FC = () => {
                   بازار بورس و صندوق‌های طلا (TSETMC)
                 </h2>
                 <p className="text-[11px] text-slate-400">
-                  قیمت‌های لحظه‌ای، ارزیابی سبد و مدیریت دارایی‌ها
+                  پایش قیمت‌های زنده و آخرین معاملات رسمی بورس تهران
                 </p>
               </div>
             </div>
@@ -100,16 +123,18 @@ export const MarketInstrumentsView: React.FC = () => {
               className={`px-3 py-1.5 rounded-2xl text-[11px] font-bold border flex items-center gap-1.5 ${
                 marketStatus?.isOpen
                   ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/40'
-                  : 'bg-slate-900 text-slate-400 border-slate-700/80'
+                  : 'bg-amber-500/10 text-amber-300 border-amber-500/30'
               }`}
               title={marketStatus?.message}
             >
               <span
                 className={`w-2 h-2 rounded-full ${
-                  marketStatus?.isOpen ? 'bg-emerald-400 animate-pulse' : 'bg-slate-500'
+                  marketStatus?.isOpen ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400'
                 }`}
               />
-              <span>{marketStatus?.isOpen ? 'بازار باز است' : 'بازار بسته است'}</span>
+              <span>
+                {marketStatus?.isOpen ? '🟢 بازار باز است (زنده)' : '🟡 بازار بسته — آخرین قیمت'}
+              </span>
             </div>
 
             {/* Refresh Button */}
@@ -128,10 +153,10 @@ export const MarketInstrumentsView: React.FC = () => {
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
           <div className="p-3 rounded-2xl bg-slate-950/80 border border-slate-800/80 space-y-1">
             <span className="text-[10px] text-slate-400 font-medium block">
-              ارزش کل سبد طلا
+              ارزش کل دارایی‌های بورسی
             </span>
             <div className="text-sm sm:text-base font-black text-gold-400">
-              {formatToman(totalMarketValueTomans)} <span className="text-[10px] text-slate-400 font-normal">ت</span>
+              {formatToman(totalMarketValueTomans)} <span className="text-[10px] text-slate-400 font-normal">تومان</span>
             </div>
           </div>
 
@@ -157,7 +182,7 @@ export const MarketInstrumentsView: React.FC = () => {
 
           <div className="p-3 rounded-2xl bg-slate-950/80 border border-slate-800/80 space-y-1 col-span-2 sm:col-span-1">
             <span className="text-[10px] text-slate-400 font-medium block">
-              آخرین دریافت نرخ
+              آخرین دریافت استعلام
             </span>
             <div className="text-xs font-bold text-slate-300 flex items-center gap-1">
               <Clock className="w-3.5 h-3.5 text-slate-400" />
@@ -168,7 +193,7 @@ export const MarketInstrumentsView: React.FC = () => {
 
       </div>
 
-      {/* 2. GOLD HOLDINGS DONUT CHART */}
+      {/* 2. HOLDINGS DONUT CHART */}
       {donutItems.length > 0 && (
         <div className="glass-card p-5 border border-gold-500/30 shadow-xl space-y-4">
           <div className="flex items-center justify-between">
@@ -177,7 +202,7 @@ export const MarketInstrumentsView: React.FC = () => {
                 <Coins className="w-4 h-4" />
               </div>
               <h3 className="text-sm font-black text-slate-100">
-                ترکیب صندوق‌های طلا در سبد
+                ترکیب دارایی‌های بورس و طلا
               </h3>
             </div>
             <span className="text-xs font-black text-gold-400">
@@ -187,7 +212,7 @@ export const MarketInstrumentsView: React.FC = () => {
 
           <PortfolioDonutChart
             items={donutItems}
-            centerTitle="مجموع طلا"
+            centerTitle="مجموع بورس"
             centerSubtitle={`${toPersianDigits(donutItems.length)} نماد`}
             size={200}
             strokeWidth={22}
@@ -199,10 +224,10 @@ export const MarketInstrumentsView: React.FC = () => {
       <div className="flex items-center justify-between pt-1">
         <div>
           <h3 className="text-sm font-black text-slate-100">
-            صندوق‌ها و دارایی‌های تحت نظر
+            نمادها و دارایی‌های تحت نظر
           </h3>
           <p className="text-[11px] text-slate-400">
-            برای ویرایش یا حذف، روی هر کارت ضربه بزنید
+            برای ویرایش تعداد واحدها یا حذف، روی هر کارت ضربه بزنید
           </p>
         </div>
 
@@ -226,9 +251,9 @@ export const MarketInstrumentsView: React.FC = () => {
           <div className="w-12 h-12 rounded-2xl bg-slate-800 flex items-center justify-center mx-auto text-slate-400">
             <Coins className="w-6 h-6" />
           </div>
-          <h4 className="text-sm font-bold text-slate-200">هنوز دارایی طلا ثبت نشده است</h4>
+          <h4 className="text-sm font-bold text-slate-200">هنوز نمادی ثبت نکرده‌اید</h4>
           <p className="text-xs text-slate-400 max-w-xs mx-auto">
-            با زدن دکمه «افزودن نماد»، صندوق‌های طلای بورس (مانند عیار، طلا، کهربا) را به سبد خود بیفزایید.
+            با زدن دکمه «افزودن نماد»، هر سهم یا صندوق بورس (عیار، طلا، فملی، شستا و...) را جستجو و اضافه کنید.
           </p>
         </div>
       ) : (
@@ -238,6 +263,7 @@ export const MarketInstrumentsView: React.FC = () => {
             const priceTomans = quote?.lastPriceTomans || 0;
             const priceChangePct = quote?.priceChangePercent || 0;
             const isPositive = priceChangePct >= 0;
+            const badge = getAssetTypeBadge(instrument.assetType, instrument.symbol);
 
             return (
               <div
@@ -248,18 +274,18 @@ export const MarketInstrumentsView: React.FC = () => {
                 }}
                 className="group relative p-4 rounded-3xl bg-slate-900/90 hover:bg-slate-900 border border-slate-800 hover:border-gold-500/40 transition-all cursor-pointer shadow-lg space-y-3 interactive-tap"
               >
-                {/* Card Top: Symbol + Price + Change Chip */}
+                {/* Card Top: Symbol + Asset Badge + Price + Change Chip */}
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
                     <div className="flex items-center gap-2">
                       <span className="text-base font-black text-slate-100">
                         {instrument.symbol}
                       </span>
-                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-gold-500/10 text-gold-400 border border-gold-500/20 font-bold">
-                        صندوق طلا
+                      <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold border ${badge.bg} ${badge.text} ${badge.border}`}>
+                        {badge.label}
                       </span>
                     </div>
-                    <span className="text-[11px] text-slate-400 block truncate mt-0.5">
+                    <span className="text-[11px] text-slate-400 block truncate mt-0.5" title={instrument.name}>
                       {instrument.name}
                     </span>
                   </div>
@@ -290,6 +316,24 @@ export const MarketInstrumentsView: React.FC = () => {
                       </span>
                     )}
                   </div>
+                </div>
+
+                {/* Card Middle: Status / Time Indicator */}
+                <div className="flex items-center justify-between text-[10px] text-slate-400 pt-0.5 border-t border-slate-800/60">
+                  <span className="flex items-center gap-1">
+                    {quote?.isStale ? (
+                      <span className="text-rose-400 font-medium">🔴 اطلاعات آفلاین</span>
+                    ) : marketStatus?.isOpen ? (
+                      <span className="text-emerald-400 font-medium">🟢 نرخ لحظه‌ای</span>
+                    ) : (
+                      <span className="text-amber-300 font-medium">🟡 آخرین معامله (بازار بسته)</span>
+                    )}
+                  </span>
+                  {quote?.tradeTime && (
+                    <span className="text-slate-500 dir-ltr">
+                      ساعت معامله: {quote.tradeTime}
+                    </span>
+                  )}
                 </div>
 
                 {/* Card Bottom: User Holdings Valuation */}

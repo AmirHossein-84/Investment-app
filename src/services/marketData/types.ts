@@ -1,5 +1,6 @@
 /**
- * Types and Interfaces for Market Data System (TSETMC & Generic Providers)
+ * Types and Interfaces for Generic Market Data System (TSETMC & Generic Providers)
+ * Completely decoupled from React and backend implementation details
  */
 
 export type AssetType = 'etf' | 'stock' | 'commodity' | 'bond' | 'other';
@@ -7,8 +8,8 @@ export type AssetType = 'etf' | 'stock' | 'commodity' | 'bond' | 'other';
 export interface MarketInstrument {
   id: string; // Internal UUID or unique ID
   provider: 'tsetmc' | 'manual';
-  providerInstrumentId: string; // TSETMC InsCode (e.g. "34144395039913458" for عیار)
-  symbol: string; // Persian symbol (e.g. "عیار")
+  providerInstrumentId: string; // Stable TSETMC InsCode (e.g. "34144395039913458" for عیار)
+  symbol: string; // Persian symbol (e.g. "عیار", "فملی", "شستا")
   name: string; // Full company / ETF name (e.g. "صندوق س. پشتوانه طلای لوتوس-ت")
   assetType: AssetType;
   cIsin?: string; // 12-char ISIN code if available
@@ -24,6 +25,8 @@ export interface UserMarketHolding {
   createdAt: string;
   updatedAt: string;
 }
+
+export type QuoteMarketState = 'open' | 'closed' | 'stale' | 'unavailable';
 
 export interface MarketQuote {
   instrumentId: string; // Local Instrument ID
@@ -52,11 +55,21 @@ export interface MarketQuote {
   tradeVolume?: number;
   tradeValueRials?: number;
 
-  // Timestamp and Freshness
+  // Timestamp, Freshness & Market State
   tradeTime?: string; // HH:MM:SS
   tradeDate?: string; // YYYYMMDD
   lastFetchedAt: number; // Unix timestamp ms
   isStale: boolean;
+  marketState?: QuoteMarketState;
+}
+
+export interface HistoricalPricePoint {
+  date: string; // YYYYMMDD
+  closePriceTomans: number;
+  lastPriceTomans: number;
+  yesterdayPriceTomans: number;
+  volume: number;
+  tradeCount: number;
 }
 
 export interface MarketStatus {
@@ -80,5 +93,6 @@ export interface MarketDataProvider {
   searchInstruments(query: string): Promise<SearchInstrumentResult[]>;
   getQuote(instrument: MarketInstrument): Promise<MarketQuote>;
   getQuotes(instruments: MarketInstrument[]): Promise<Record<string, MarketQuote>>;
+  getHistoricalData(instrument: MarketInstrument, days?: number): Promise<HistoricalPricePoint[]>;
   getMarketStatus(): Promise<MarketStatus>;
 }
