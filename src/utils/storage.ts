@@ -2,17 +2,24 @@ import {
   AppSettings,
   CryptoAsset,
   GoldHolding,
+  PhysicalGoldItem,
   TransactionRecord,
   MarketInstrument,
   UserMarketHolding,
 } from '../types/investment';
-import { DEFAULT_CRYPTO_ASSETS, DEFAULT_GOLD_HOLDING, DEFAULT_SETTINGS } from '../constants/defaultData';
+import {
+  DEFAULT_CRYPTO_ASSETS,
+  DEFAULT_GOLD_HOLDING,
+  DEFAULT_PHYSICAL_GOLD_ITEMS,
+  DEFAULT_SETTINGS,
+} from '../constants/defaultData';
 import { NobitexConfig } from '../services/nobitex/types';
 
 const STORAGE_KEYS = {
   SETTINGS: 'investment_app_settings_v1',
   CRYPTO_ASSETS: 'investment_app_crypto_assets_v1',
   GOLD_HOLDING: 'investment_app_gold_holding_v1',
+  PHYSICAL_GOLD: 'investment_app_physical_gold_v1',
   TRANSACTIONS: 'investment_app_transactions_v1',
   LAST_INPUT: 'investment_app_last_input_v1',
   MARKET_INSTRUMENTS: 'investment_app_market_instruments_v1',
@@ -26,6 +33,7 @@ export interface ExportedBackupData {
   settings: AppSettings;
   cryptoAssets: CryptoAsset[];
   goldHolding: GoldHolding;
+  physicalGold?: PhysicalGoldItem[];
   transactions: TransactionRecord[];
   marketInstruments?: MarketInstrument[];
   marketHoldings?: UserMarketHolding[];
@@ -83,6 +91,35 @@ export function saveGoldHolding(holding: GoldHolding): void {
     localStorage.setItem(STORAGE_KEYS.GOLD_HOLDING, JSON.stringify(holding));
   } catch (e) {
     console.error('Failed to save gold holding:', e);
+  }
+}
+
+// -------------------------------------------------------------
+// PHYSICAL GOLD & COINS PERSISTENCE
+// -------------------------------------------------------------
+
+export function loadPhysicalGold(): PhysicalGoldItem[] {
+  try {
+    const data = localStorage.getItem(STORAGE_KEYS.PHYSICAL_GOLD);
+    if (!data) return DEFAULT_PHYSICAL_GOLD_ITEMS;
+    const parsed: PhysicalGoldItem[] = JSON.parse(data);
+    
+    // Merge with defaults in case new coin items were added
+    return DEFAULT_PHYSICAL_GOLD_ITEMS.map((def) => {
+      const existing = parsed.find((p) => p.id === def.id);
+      return existing ? { ...def, ...existing } : def;
+    });
+  } catch (e) {
+    console.error('Failed to load physical gold:', e);
+    return DEFAULT_PHYSICAL_GOLD_ITEMS;
+  }
+}
+
+export function savePhysicalGold(items: PhysicalGoldItem[]): void {
+  try {
+    localStorage.setItem(STORAGE_KEYS.PHYSICAL_GOLD, JSON.stringify(items));
+  } catch (e) {
+    console.error('Failed to save physical gold:', e);
   }
 }
 
@@ -185,11 +222,12 @@ export function saveNobitexConfig(config: NobitexConfig): void {
 
 export function exportBackupData(): string {
   const backup: ExportedBackupData = {
-    version: '1.2.0',
+    version: '1.3.0',
     exportDate: new Date().toISOString(),
     settings: loadSettings(),
     cryptoAssets: loadCryptoAssets(),
     goldHolding: loadGoldHolding(),
+    physicalGold: loadPhysicalGold(),
     transactions: loadTransactions(),
     marketInstruments: loadMarketInstruments(),
     marketHoldings: loadMarketHoldings(),
@@ -207,6 +245,7 @@ export function importBackupData(jsonString: string): boolean {
     saveSettings(parsed.settings);
     saveCryptoAssets(parsed.cryptoAssets);
     if (parsed.goldHolding) saveGoldHolding(parsed.goldHolding);
+    if (Array.isArray(parsed.physicalGold)) savePhysicalGold(parsed.physicalGold);
     if (parsed.transactions) saveTransactions(parsed.transactions);
     if (Array.isArray(parsed.marketInstruments)) saveMarketInstruments(parsed.marketInstruments);
     if (Array.isArray(parsed.marketHoldings)) saveMarketHoldings(parsed.marketHoldings);
@@ -222,6 +261,7 @@ export function resetAllDataToDefault(): void {
   localStorage.removeItem(STORAGE_KEYS.SETTINGS);
   localStorage.removeItem(STORAGE_KEYS.CRYPTO_ASSETS);
   localStorage.removeItem(STORAGE_KEYS.GOLD_HOLDING);
+  localStorage.removeItem(STORAGE_KEYS.PHYSICAL_GOLD);
   localStorage.removeItem(STORAGE_KEYS.TRANSACTIONS);
   localStorage.removeItem(STORAGE_KEYS.LAST_INPUT);
   localStorage.removeItem(STORAGE_KEYS.MARKET_INSTRUMENTS);

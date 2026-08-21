@@ -93,6 +93,16 @@ export default defineConfig({
           'User-Agent': 'TraderBot/InvestmentApp-1.0.0',
           'Accept': 'application/json, text/plain, */*',
         }
+      },
+      '/api/tgju': {
+        target: 'https://call5.tgju.org',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api\/tgju/, ''),
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+          'Referer': 'https://www.tgju.org/',
+          'Accept': 'application/json, text/plain, */*',
+        }
       }
     }
   }

@@ -6,13 +6,14 @@ import {
   ArrowRight,
   TrendingUp,
 } from 'lucide-react';
-import { CryptoAsset } from '../../types/investment';
+import { CryptoAsset, PhysicalGoldItem, PhysicalGoldType } from '../../types/investment';
 import { useMarketData } from '../../hooks/useMarketData';
 import { formatToman, toPersianDigits } from '../../utils/formatters';
 import { triggerHaptic } from '../../utils/haptics';
 import { AddAssetModal } from './AddAssetModal';
 import { EditAssetModal } from './EditAssetModal';
 import { NobitexIntegrationCard } from '../crypto/NobitexIntegrationCard';
+import { PhysicalGoldSection } from './PhysicalGoldSection';
 
 interface HoldingsManagerProps {
   cryptoAssets: CryptoAsset[];
@@ -20,6 +21,12 @@ interface HoldingsManagerProps {
   addCryptoAsset: (asset: Omit<CryptoAsset, 'id'>) => void;
   editCryptoAsset: (id: string, updates: Partial<CryptoAsset>) => void;
   removeCryptoAsset: (id: string) => void;
+  physicalGoldItems?: PhysicalGoldItem[];
+  totalPhysicalGoldValueTomans?: number;
+  isRefreshingGold?: boolean;
+  onRefreshPhysicalGold?: () => Promise<void>;
+  onUpdatePhysicalGoldQuantity?: (id: PhysicalGoldType, quantity: number) => void;
+  onUpdatePhysicalGoldPrice?: (id: PhysicalGoldType, priceTomans: number, isCustom: boolean) => void;
   onNavigateToCalculator: () => void;
   onNavigateToMarket?: () => void;
   onNotify?: (message: string, type?: 'success' | 'info' | 'error') => void;
@@ -31,6 +38,12 @@ export const HoldingsManager: React.FC<HoldingsManagerProps> = ({
   addCryptoAsset,
   editCryptoAsset,
   removeCryptoAsset,
+  physicalGoldItems = [],
+  totalPhysicalGoldValueTomans = 0,
+  isRefreshingGold = false,
+  onRefreshPhysicalGold = async () => {},
+  onUpdatePhysicalGoldQuantity = () => {},
+  onUpdatePhysicalGoldPrice = () => {},
   onNavigateToCalculator,
   onNavigateToMarket,
   onNotify,
@@ -70,7 +83,7 @@ export const HoldingsManager: React.FC<HoldingsManagerProps> = ({
             </h2>
           </div>
           <p className="text-xs text-slate-400 mt-1">
-            موجودی‌های قبلی طلا (صندوق‌های بورسی TSETMC) و ارزهای دیجیتال خود را مدیریت کنید.
+            موجودی طلای فیزیکی و سکه، صندوق‌های بورسی (TSETMC) و ارزهای دیجیتال خود را مدیریت کنید.
           </p>
         </div>
 
@@ -86,12 +99,23 @@ export const HoldingsManager: React.FC<HoldingsManagerProps> = ({
         </button>
       </div>
 
-      {/* 1. TSETMC GOLD SECTION */}
-      <div className="p-4 sm:p-6 rounded-3xl bg-gradient-to-br from-amber-950/30 via-slate-900 to-slate-950 border border-gold-500/40 shadow-lg space-y-3.5">
+      {/* 1. PHYSICAL GOLD & COINS SECTION */}
+      <PhysicalGoldSection
+        items={physicalGoldItems}
+        totalValueTomans={totalPhysicalGoldValueTomans}
+        isRefreshing={isRefreshingGold}
+        onRefresh={onRefreshPhysicalGold}
+        onUpdateQuantity={onUpdatePhysicalGoldQuantity}
+        onUpdatePrice={onUpdatePhysicalGoldPrice}
+        onNotify={onNotify}
+      />
+
+      {/* 2. TSETMC GOLD SECTION */}
+      <div className="p-4 sm:p-6 rounded-3xl bg-gradient-to-br from-amber-950/20 via-slate-900 to-slate-950 border border-gold-500/30 shadow-lg space-y-3.5">
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-2.5">
             <div className="w-10 h-10 rounded-2xl bg-amber-500/20 text-gold-400 flex items-center justify-center font-bold text-lg">
-              🥇
+              📈
             </div>
             <div>
               <h3 className="text-base font-black text-slate-100">
@@ -162,14 +186,14 @@ export const HoldingsManager: React.FC<HoldingsManagerProps> = ({
         )}
       </div>
 
-      {/* 2. NOBITEX API AUTO-SYNC CARD */}
+      {/* 3. NOBITEX API AUTO-SYNC CARD */}
       <NobitexIntegrationCard
         cryptoAssets={cryptoAssets}
         onAssetsUpdated={updateCryptoAssets}
         onNotify={onNotify}
       />
 
-      {/* 3. CRYPTO SECTION */}
+      {/* 4. CRYPTO SECTION */}
       <div className="glass-card p-4 sm:p-6 border border-slate-800 space-y-3.5">
         <div className="flex items-center justify-between gap-3 border-b border-slate-800 pb-3">
           <div>

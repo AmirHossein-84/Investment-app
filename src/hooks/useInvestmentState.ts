@@ -1,20 +1,15 @@
-import { useState, useMemo, useCallback } from 'react';
-import confetti from 'canvas-confetti';
+import { useState, useCallback, useMemo, useEffect } from 'react';
 import {
   AppSettings,
   CryptoAsset,
   GoldHolding,
+  PhysicalGoldItem,
+  PhysicalGoldType,
   TransactionRecord,
+  CalculationResult,
   ActiveTab,
+  AppBackupData,
 } from '../types/investment';
-import {
-  DEFAULT_CRYPTO_ASSETS,
-  DEFAULT_GOLD_HOLDING,
-  DEFAULT_SETTINGS,
-} from '../constants/defaultData';
-import {
-  calculatePortfolioAllocation,
-} from '../utils/calculations';
 import {
   loadSettings,
   saveSettings,
@@ -22,15 +17,19 @@ import {
   saveCryptoAssets,
   loadGoldHolding,
   saveGoldHolding,
+  loadPhysicalGold,
+  savePhysicalGold,
   loadTransactions,
   saveTransactions,
   loadLastInput,
   saveLastInput,
-  resetAllDataToDefault,
   exportBackupData,
   importBackupData,
+  resetAllDataToDefault,
 } from '../utils/storage';
+import { calculatePortfolioAllocation } from '../utils/calculations';
 import { getPersianFormattedDate } from '../utils/formatters';
+import { physicalGoldService } from '../services/goldPrice/PhysicalGoldService';
 
 interface UseInvestmentStateProps {
   externalGoldValueTomans?: number;
@@ -43,6 +42,8 @@ export function useInvestmentState(props?: UseInvestmentStateProps) {
   const [settings, setSettingsState] = useState<AppSettings>(() => loadSettings());
   const [cryptoAssets, setCryptoAssetsState] = useState<CryptoAsset[]>(() => loadCryptoAssets());
   const [goldHolding, setGoldHoldingState] = useState<GoldHolding>(() => loadGoldHolding());
+  const [physicalGoldItems, setPhysicalGoldItemsState] = useState<PhysicalGoldItem[]>(() => loadPhysicalGold());
+  const [isRefreshingGold, setIsRefreshingGold] = useState<boolean>(false);
   const [transactions, setTransactionsState] = useState<TransactionRecord[]>(() => loadTransactions());
   const [notification, setNotification] = useState<{ message: string; type: 'success' | 'info' | 'error' } | null>(null);
 
@@ -80,6 +81,80 @@ export function useInvestmentState(props?: UseInvestmentStateProps) {
     });
     showNotification('دارایی طلا به‌روزرسانی شد');
   }, [showNotification]);
+
+  // -------------------------------------------------------------
+  // PHYSICAL GOLD & COINS MANAGEMENT
+  // -------------------------------------------------------------
+
+  const updatePhysicalGoldQuantity = useCallback((id: PhysicalGoldType, quantity: number) => {
+    setPhysicalGoldItemsState((prev) => {
+      const updated = prev.map((item) => {
+        if (item.id === id) {
+          return { ...item, quantity: Math.max(0, quantity) };
+        }
+        return item;
+      });
+      savePhysicalGold(updated);
+      return updated;
+    });
+    showNotification('موجودی طلای فیزیکی به‌روزرسانی شد');
+  }, [showNotification]);
+
+  const updatePhysicalGoldPrice = useCallback((id: PhysicalGoldType, unitPriceTomans: number, isCustom = true) => {
+    setPhysicalGoldItemsState((prev) => {
+      const updated = prev.map((item) => {
+        if (item.id === id) {
+          return {
+            ...item,
+            unitPriceTomans: Math.max(0, unitPriceTomans),
+            isCustomPrice: isCustom,
+          };
+        }
+        return item;
+      });
+      savePhysicalGold(updated);
+      return updated;
+    });
+    showNotification('قیمت واحد به‌روزرسانی شد');
+  }, [showNotification]);
+
+  const refreshPhysicalGoldPrices = useCallback(async () => {
+    setIsRefreshingGold(true);
+    try {
+      const liveRates = await physicalGoldService.fetchLiveRates();
+      setPhysicalGoldItemsState((prev) => {
+        const updated = prev.map((item) => {
+          const liveRate = liveRates[item.id];
+          if (liveRate && !item.isCustomPrice) {
+            return {
+              ...item,
+              unitPriceTomans: liveRate.priceTomans,
+              priceChangePercent: liveRate.changePercent,
+              lastFetchedAt: Date.now(),
+            };
+          }
+          return item;
+        });
+        savePhysicalGold(updated);
+        return updated;
+      });
+    } catch (e) {
+      console.warn('Failed to refresh physical gold prices:', e);
+    } finally {
+      setIsRefreshingGold(false);
+    }
+  }, []);
+
+  // Auto-fetch live gold & coin rates on load
+  useEffect(() => {
+    refreshPhysicalGoldPrices();
+  }, [refreshPhysicalGoldPrices]);
+
+  const totalPhysicalGoldValueTomans = useMemo(() => {
+    return physicalGoldItems.reduce((sum, item) => {
+      return sum + (item.quantity * item.unitPriceTomans);
+    }, 0);
+  }, [physicalGoldItems]);
 
   const addCryptoAsset = useCallback((asset: Omit<CryptoAsset, 'id'>) => {
     const newAsset: CryptoAsset = {
@@ -122,16 +197,19 @@ export function useInvestmentState(props?: UseInvestmentStateProps) {
     });
   }, [showNotification]);
 
-  // Use live TSETMC gold funds valuation as primary source, fallback to local holding if none
+  // Combined Gold Valuation: TSETMC Gold Funds + Physical Gold & Coins
   const effectiveGoldHolding: GoldHolding = useMemo(() => {
-    if (props?.externalGoldValueTomans !== undefined && props.externalGoldValueTomans > 0) {
+    const tsetmcGoldVal = props?.externalGoldValueTomans || 0;
+    const combinedGoldVal = tsetmcGoldVal + totalPhysicalGoldValueTomans;
+    
+    if (combinedGoldVal > 0) {
       return {
         ...goldHolding,
-        currentHoldingValue: props.externalGoldValueTomans,
+        currentHoldingValue: combinedGoldVal,
       };
     }
     return goldHolding;
-  }, [props?.externalGoldValueTomans, goldHolding]);
+  }, [props?.externalGoldValueTomans, totalPhysicalGoldValueTomans, goldHolding]);
 
   // Main portfolio rebalancing calculation result
   const calculationResult = useMemo(() => {
@@ -159,23 +237,30 @@ export function useInvestmentState(props?: UseInvestmentStateProps) {
       });
     }
 
-    // 2. Update Crypto assets holdings
+    // 2. Update Crypto assets
     setCryptoAssetsState((prevAssets) => {
-      const updatedAssets = prevAssets.map((asset) => {
-        const buy = calculationResult.cryptoBuys.find((b) => b.id === asset.id)?.suggestedBuy || 0;
-        const newVal = (asset.currentHoldingValue || 0) + buy;
-        return {
-          ...asset,
-          currentHoldingValue: newVal,
-          currentAmount: asset.unitPrice && asset.unitPrice > 0 ? Number((newVal / asset.unitPrice).toFixed(6)) : asset.currentAmount,
-        };
+      const updated = prevAssets.map((asset) => {
+        const buy = calculationResult.cryptoBuys.find((b) => b.id === asset.id);
+        if (buy && buy.suggestedBuy > 0) {
+          const newHoldingVal = asset.currentHoldingValue + buy.suggestedBuy;
+          let newCoinAmount = asset.currentAmount;
+          if (asset.unitPrice && asset.unitPrice > 0) {
+            newCoinAmount = Number((newHoldingVal / asset.unitPrice).toFixed(6));
+          }
+          return {
+            ...asset,
+            currentHoldingValue: newHoldingVal,
+            currentAmount: newCoinAmount,
+          };
+        }
+        return asset;
       });
-      saveCryptoAssets(updatedAssets);
-      return updatedAssets;
+      saveCryptoAssets(updated);
+      return updated;
     });
 
-    // 3. Record transaction
-    const newRecord: TransactionRecord = {
+    // 3. Create Transaction Record
+    const newTx: TransactionRecord = {
       id: `tx_${Date.now()}`,
       date: new Date().toISOString(),
       persianDate: getPersianFormattedDate(new Date()),
@@ -183,70 +268,67 @@ export function useInvestmentState(props?: UseInvestmentStateProps) {
       totalSavingsAmount: calculationResult.totalSavingsAmount,
       goldBuyAmount: calculationResult.goldBuyAmount,
       cryptoBuyAmount: calculationResult.cryptoBuyAmount,
-      cryptoBuys: calculationResult.cryptoBuys.map((b) => ({
-        symbol: b.symbol,
-        name: b.name,
-        amount: b.suggestedBuy,
-      })),
+      cryptoBuys: calculationResult.cryptoBuys
+        .filter((b) => b.suggestedBuy > 0)
+        .map((b) => ({
+          symbol: b.symbol,
+          name: b.name,
+          amount: b.suggestedBuy,
+        })),
       appliedToHoldings: true,
     };
 
     setTransactionsState((prev) => {
-      const updated = [newRecord, ...prev];
+      const updated = [newTx, ...prev];
       saveTransactions(updated);
       return updated;
     });
 
-    // Confetti effect
-    try {
-      confetti({
-        particleCount: 80,
-        spread: 70,
-        origin: { y: 0.6 },
-        colors: ['#D4AF37', '#627EEA', '#10B981', '#F7931A'],
-      });
-    } catch {
-      // fallback
-    }
-
-    showNotification('خریدهای پیشنهادی با موفقیت به دارایی‌های شما اضافه شد!');
+    showNotification('خریدها با موفقیت در موجودی دارایی‌ها و تاریخچه تراکنش‌ها ثبت شدند');
   }, [calculationResult, props, showNotification]);
 
   const deleteTransaction = useCallback((id: string) => {
     setTransactionsState((prev) => {
-      const updated = prev.filter((t) => t.id !== id);
+      const updated = prev.filter((tx) => tx.id !== id);
       saveTransactions(updated);
       return updated;
     });
-    showNotification('تراکنش حذف شد', 'info');
+    showNotification('تراکنش از تاریخچه حذف شد', 'info');
   }, [showNotification]);
 
   const clearAllHistory = useCallback(() => {
     setTransactionsState([]);
     saveTransactions([]);
-    showNotification('تمام تاریخچه پاک شد', 'info');
+    showNotification('کل تاریخچه تراکنش‌ها پاک شد', 'info');
   }, [showNotification]);
 
   const resetToFactoryDefaults = useCallback(() => {
     resetAllDataToDefault();
-    setSettingsState(DEFAULT_SETTINGS);
-    setCryptoAssetsState(DEFAULT_CRYPTO_ASSETS);
-    setGoldHoldingState(DEFAULT_GOLD_HOLDING);
+    setSettingsState(loadSettings());
+    setCryptoAssetsState(loadCryptoAssets());
+    setGoldHoldingState(loadGoldHolding());
+    setPhysicalGoldItemsState(loadPhysicalGold());
     setTransactionsState([]);
     setInputAmountState(0);
-    showNotification('تمام اطلاعات به حالت پیش‌فرض بازنشانی شد', 'info');
+    showNotification('تمامی اطلاعات به تنظیمات پیش‌فرض کارخانه بازنشانی شد', 'info');
   }, [showNotification]);
 
   const handleExportBackup = useCallback(() => {
-    const dataStr = exportBackupData();
-    const blob = new Blob([dataStr], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `investment_backup_${new Date().toISOString().slice(0, 10)}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-    showNotification('فایل پشتیبان با موفقیت دانلود شد');
+    try {
+      const dataStr = exportBackupData();
+      const blob = new Blob([dataStr], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `investment_app_backup_${new Date().toISOString().slice(0, 10)}.json`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      showNotification('فایل پشتیبان با موفقیت دانلود شد');
+    } catch (e) {
+      showNotification('خطا در ایجاد فایل پشتیبان', 'error');
+    }
   }, [showNotification]);
 
   const handleImportBackup = useCallback((jsonString: string) => {
@@ -255,11 +337,13 @@ export function useInvestmentState(props?: UseInvestmentStateProps) {
       setSettingsState(loadSettings());
       setCryptoAssetsState(loadCryptoAssets());
       setGoldHoldingState(loadGoldHolding());
+      setPhysicalGoldItemsState(loadPhysicalGold());
       setTransactionsState(loadTransactions());
-      showNotification('پشتیبان با موفقیت بازیابی شد');
+      showNotification('اطلاعات با موفقیت از فایل پشتیبان بازیابی شدند');
     } else {
-      showNotification('خطا در فایل پشتیبان. فرمت نامعتبر است', 'error');
+      showNotification('فایل پشتیبان نامعتبر است', 'error');
     }
+    return success;
   }, [showNotification]);
 
   return {
@@ -274,8 +358,14 @@ export function useInvestmentState(props?: UseInvestmentStateProps) {
     addCryptoAsset,
     editCryptoAsset,
     removeCryptoAsset,
-    goldHolding: effectiveGoldHolding,
+    goldHolding,
     updateGoldHolding,
+    physicalGoldItems,
+    isRefreshingGold,
+    totalPhysicalGoldValueTomans,
+    updatePhysicalGoldQuantity,
+    updatePhysicalGoldPrice,
+    refreshPhysicalGoldPrices,
     transactions,
     deleteTransaction,
     clearAllHistory,

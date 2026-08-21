@@ -67,6 +67,12 @@ const AppContent: React.FC = () => {
     editCryptoAsset,
     removeCryptoAsset,
     goldHolding,
+    physicalGoldItems,
+    isRefreshingGold,
+    totalPhysicalGoldValueTomans,
+    updatePhysicalGoldQuantity,
+    updatePhysicalGoldPrice,
+    refreshPhysicalGoldPrices,
     transactions,
     deleteTransaction,
     clearAllHistory,
@@ -88,23 +94,23 @@ const AppContent: React.FC = () => {
   const goldEtfUnitPrice = activeGoldQuote?.lastPriceTomans || 35000;
   const goldEtfUnitChange = activeGoldQuote?.priceChangePercent || 0;
 
-  const totalGoldValue = totalGoldMarketValueTomans > 0
-    ? totalGoldMarketValueTomans
-    : (goldHolding.currentHoldingValue || 0);
+  // Total Gold Valuation: TSETMC Gold Funds + Physical Gold & Coins
+  const totalGoldValue = totalGoldMarketValueTomans + totalPhysicalGoldValueTomans;
   const totalCryptoValue = cryptoAssets.reduce((sum, a) => sum + (a.currentHoldingValue || 0), 0);
   const totalPortfolioValue = totalGoldValue + totalCryptoValue;
 
-  // Unified pull-to-refresh handler across both TSETMC and Nobitex
+  // Unified pull-to-refresh handler across TSETMC, TGJU Gold & Coins, and Nobitex
   const handleRefreshAll = async () => {
     setIsRefreshingAll(true);
     try {
       await Promise.all([
         refreshQuotes(true),
+        refreshPhysicalGoldPrices(),
         isNobitexConfigured
           ? syncWithNobitex(cryptoAssets, updateCryptoAssets)
           : refreshCryptoPrices(cryptoAssets, updateCryptoAssets),
       ]);
-      showNotification('اطلاعات بورس، طلا و رمزارزها به‌روزرسانی شد', 'success');
+      showNotification('اطلاعات بورس، طلا، سکه و رمزارزها به‌روزرسانی شد', 'success');
     } catch (e) {
       console.warn('Refresh all error:', e);
     } finally {
@@ -173,6 +179,12 @@ const AppContent: React.FC = () => {
               addCryptoAsset={addCryptoAsset}
               editCryptoAsset={editCryptoAsset}
               removeCryptoAsset={removeCryptoAsset}
+              physicalGoldItems={physicalGoldItems}
+              totalPhysicalGoldValueTomans={totalPhysicalGoldValueTomans}
+              isRefreshingGold={isRefreshingGold}
+              onRefreshPhysicalGold={refreshPhysicalGoldPrices}
+              onUpdatePhysicalGoldQuantity={updatePhysicalGoldQuantity}
+              onUpdatePhysicalGoldPrice={updatePhysicalGoldPrice}
               onNavigateToCalculator={() => setActiveTab('dashboard')}
               onNavigateToMarket={() => setActiveTab('gold')}
               onNotify={showNotification}

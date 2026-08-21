@@ -9,6 +9,10 @@
       "destination": "https://cdn.tsetmc.com/api/:path*"
     },
     {
+      "source": "/api/tgju/:path*",
+      "destination": "https://call5.tgju.org/:path*"
+    },
+    {
       "source": "/(.*)",
       "destination": "/index.html"
     }

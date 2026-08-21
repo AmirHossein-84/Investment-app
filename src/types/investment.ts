@@ -14,6 +14,26 @@ export interface CryptoAsset {
   isDefault?: boolean;
 }
 
+export type PhysicalGoldType =
+  | 'gold_18k'
+  | 'gold_24k'
+  | 'coin_emami'
+  | 'coin_bahar'
+  | 'coin_half'
+  | 'coin_quarter'
+  | 'coin_gram';
+
+export interface PhysicalGoldItem {
+  id: PhysicalGoldType;
+  title: string;
+  unit: 'گرم' | 'عدد';
+  quantity: number; // e.g. 15.5 grams or 2 coins
+  unitPriceTomans: number; // live or user-custom price per unit in Tomans
+  priceChangePercent?: number; // 24h change
+  lastFetchedAt?: number;
+  isCustomPrice?: boolean; // If user manually overridden the price
+}
+
 export interface GoldHolding {
   currentHoldingValue: number; // in Tomans
   currentGrams?: number; // in grams
@@ -72,6 +92,7 @@ export interface AppBackupData {
   exportDate: string;
   cryptoAssets: CryptoAsset[];
   goldHolding: GoldHolding;
+  physicalGold?: PhysicalGoldItem[];
   settings: AppSettings;
   transactions: TransactionRecord[];
   marketInstruments?: MarketInstrument[];

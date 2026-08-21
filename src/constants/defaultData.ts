@@ -98,3 +98,62 @@ export const DEFAULT_GOLD_HOLDING: GoldHolding = {
   currentGrams: 0,
   pricePerGram: 5200000,
 };
+
+export const DEFAULT_PHYSICAL_GOLD_ITEMS = [
+  {
+    id: 'gold_18k' as const,
+    title: 'طلای ۱۸ عیار',
+    unit: 'گرم' as const,
+    quantity: 0,
+    unitPriceTomans: 5200000,
+    priceChangePercent: 0,
+  },
+  {
+    id: 'gold_24k' as const,
+    title: 'طلای ۲۴ عیار (دست‌نخورده/شمش)',
+    unit: 'گرم' as const,
+    quantity: 0,
+    unitPriceTomans: 6930000,
+    priceChangePercent: 0,
+  },
+  {
+    id: 'coin_emami' as const,
+    title: 'سکه تمام بهار آزادی (امامی / طرح جدید)',
+    unit: 'عدد' as const,
+    quantity: 0,
+    unitPriceTomans: 54500000,
+    priceChangePercent: 0,
+  },
+  {
+    id: 'coin_bahar' as const,
+    title: 'سکه تمام بهار آزادی (طرح قدیم)',
+    unit: 'عدد' as const,
+    quantity: 0,
+    unitPriceTomans: 50000000,
+    priceChangePercent: 0,
+  },
+  {
+    id: 'coin_half' as const,
+    title: 'نیم سکه بهار آزادی',
+    unit: 'عدد' as const,
+    quantity: 0,
+    unitPriceTomans: 28500000,
+    priceChangePercent: 0,
+  },
+  {
+    id: 'coin_quarter' as const,
+    title: 'ربع سکه بهار آزادی',
+    unit: 'عدد' as const,
+    quantity: 0,
+    unitPriceTomans: 17500000,
+    priceChangePercent: 0,
+  },
+  {
+    id: 'coin_gram' as const,
+    title: 'سکه یک گرمی',
+    unit: 'عدد' as const,
+    quantity: 0,
+    unitPriceTomans: 8500000,
+    priceChangePercent: 0,
+  },
+];
