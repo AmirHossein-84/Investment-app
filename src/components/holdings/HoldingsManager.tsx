@@ -24,6 +24,7 @@ interface HoldingsManagerProps {
   physicalGoldItems?: PhysicalGoldItem[];
   totalPhysicalGoldValueTomans?: number;
   isRefreshingGold?: boolean;
+  isGoldFetchError?: boolean;
   onRefreshPhysicalGold?: () => Promise<void>;
   onUpdatePhysicalGoldQuantity?: (id: PhysicalGoldType, quantity: number) => void;
   onUpdatePhysicalGoldPrice?: (id: PhysicalGoldType, priceTomans: number, isCustom: boolean) => void;
@@ -41,6 +42,7 @@ export const HoldingsManager: React.FC<HoldingsManagerProps> = ({
   physicalGoldItems = [],
   totalPhysicalGoldValueTomans = 0,
   isRefreshingGold = false,
+  isGoldFetchError = false,
   onRefreshPhysicalGold = async () => {},
   onUpdatePhysicalGoldQuantity = () => {},
   onUpdatePhysicalGoldPrice = () => {},
@@ -104,6 +106,7 @@ export const HoldingsManager: React.FC<HoldingsManagerProps> = ({
         items={physicalGoldItems}
         totalValueTomans={totalPhysicalGoldValueTomans}
         isRefreshing={isRefreshingGold}
+        isGoldFetchError={isGoldFetchError}
         onRefresh={onRefreshPhysicalGold}
         onUpdateQuantity={onUpdatePhysicalGoldQuantity}
         onUpdatePrice={onUpdatePhysicalGoldPrice}

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Check, RotateCcw, AlertCircle, Coins, Sparkles } from 'lucide-react';
+import { X, Check, RotateCcw, Coins, AlertCircle } from 'lucide-react';
 import { PhysicalGoldItem, PhysicalGoldType } from '../../types/investment';
 import { formatToman, toPersianDigits } from '../../utils/formatters';
 import { triggerHaptic } from '../../utils/haptics';
@@ -26,7 +26,7 @@ export const EditPhysicalGoldModal: React.FC<EditPhysicalGoldModalProps> = ({
   useEffect(() => {
     if (item) {
       setQuantity(item.quantity ? String(item.quantity) : '');
-      setPriceTomans(String(item.unitPriceTomans || ''));
+      setPriceTomans(item.unitPriceTomans ? String(item.unitPriceTomans) : '');
       setIsCustomPrice(!!item.isCustomPrice);
     }
   }, [item]);
@@ -60,13 +60,13 @@ export const EditPhysicalGoldModal: React.FC<EditPhysicalGoldModalProps> = ({
         {/* Header */}
         <div className="flex items-center justify-between border-b border-slate-800 pb-3">
           <div className="flex items-center gap-2.5">
-            <div className="w-10 h-10 rounded-2xl bg-gold-500/20 text-gold-400 flex items-center justify-center font-bold text-lg border border-gold-500/30">
-              🥇
+            <div className="w-10 h-10 rounded-2xl bg-gold-500/20 text-gold-400 flex items-center justify-center font-bold text-lg border border-gold-500/30 shrink-0">
+              {item.id.startsWith('coin_') ? '🪙' : '🥇'}
             </div>
             <div>
               <h3 className="text-base font-black text-slate-100">{item.title}</h3>
               <span className="text-[11px] text-slate-400">
-                واحد اندازه‌گیری: <span className="text-gold-400 font-bold">{item.unit}</span>
+                واحد شمارش: <span className="text-gold-400 font-bold">{item.unit}</span>
               </span>
             </div>
           </div>
@@ -87,23 +87,31 @@ export const EditPhysicalGoldModal: React.FC<EditPhysicalGoldModalProps> = ({
           
           {/* Quantity / Weight Input */}
           <div className="space-y-1.5">
-            <label className="text-xs font-bold text-slate-300 block">
-              مقدار موجودی ({item.unit})
-            </label>
-            <div className="relative">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-bold text-slate-300 block">
+                مقدار موجودی ({item.unit})
+              </label>
+              {numQty > 0 && (
+                <span className="text-[11px] font-bold text-gold-400">
+                  {toPersianDigits(numQty)} {item.unit}
+                </span>
+              )}
+            </div>
+
+            <div className="relative flex items-center">
               <input
                 type="number"
                 step="any"
                 min="0"
                 value={quantity}
                 onChange={(e) => setQuantity(e.target.value)}
-                placeholder={`مثلاً ${item.unit === 'گرم' ? '۱۲.۵' : '۲'}`}
-                className="w-full px-4 py-3 rounded-2xl bg-slate-950 border border-slate-800 focus:border-gold-500/80 focus:ring-1 focus:ring-gold-500/80 text-slate-100 text-left dir-ltr font-bold text-base outline-none transition-all placeholder:text-slate-600"
+                placeholder={item.unit === 'گرم' ? 'مثلاً ۱۲.۵' : 'مثلاً ۲'}
+                className="w-full pl-16 pr-4 py-3 rounded-2xl bg-slate-950 border border-slate-800 focus:border-gold-500/80 focus:ring-1 focus:ring-gold-500/80 text-slate-100 text-left dir-ltr font-bold text-base outline-none transition-all placeholder:text-slate-600 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                 autoFocus
               />
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-slate-500 font-bold pointer-events-none">
+              <div className="absolute left-3 top-1/2 -translate-y-1/2 px-2 py-0.5 rounded-lg bg-slate-900 border border-slate-800 text-xs text-gold-400 font-bold pointer-events-none">
                 {item.unit}
-              </span>
+              </div>
             </div>
           </div>
 
@@ -125,7 +133,7 @@ export const EditPhysicalGoldModal: React.FC<EditPhysicalGoldModalProps> = ({
               )}
             </div>
 
-            <div className="relative">
+            <div className="relative flex items-center">
               <input
                 type="number"
                 min="0"
@@ -134,17 +142,29 @@ export const EditPhysicalGoldModal: React.FC<EditPhysicalGoldModalProps> = ({
                   setPriceTomans(e.target.value);
                   setIsCustomPrice(true);
                 }}
-                className="w-full px-4 py-3 rounded-2xl bg-slate-950 border border-slate-800 focus:border-gold-500/80 focus:ring-1 focus:ring-gold-500/80 text-slate-100 text-left dir-ltr font-bold text-base outline-none transition-all placeholder:text-slate-600"
+                placeholder="در انتظار دریافت نرخ زنده..."
+                className="w-full pl-16 pr-4 py-3 rounded-2xl bg-slate-950 border border-slate-800 focus:border-gold-500/80 focus:ring-1 focus:ring-gold-500/80 text-slate-100 text-left dir-ltr font-bold text-base outline-none transition-all placeholder:text-slate-600 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
               />
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-slate-500 font-bold pointer-events-none">
+              <div className="absolute left-3 top-1/2 -translate-y-1/2 px-2 py-0.5 rounded-lg bg-slate-900 border border-slate-800 text-xs text-slate-400 font-bold pointer-events-none">
                 تومان
-              </span>
+              </div>
             </div>
-            <p className="text-[10px] text-slate-500">
-              {isCustomPrice
-                ? '⚠️ قیمت به صورت دستی تغییر کرده است.'
-                : '✅ قیمت به صورت خودکار از شبکه اطلاع‌رسانی طلا دریافت می‌شود.'}
-            </p>
+
+            {/* Price Preview in Persian format */}
+            <div className="flex items-center justify-between text-[11px] pt-0.5">
+              <span className="text-slate-500">
+                {isCustomPrice
+                  ? '⚠️ نرخ به صورت دستی تعیین شده است.'
+                  : numPrice > 0
+                  ? '✅ نرخ زنده از شبکه طلا و ارز'
+                  : '⏳ در انتظار دریافت نرخ زنده...'}
+              </span>
+              {numPrice > 0 && (
+                <span className="text-slate-300 font-bold dir-rtl">
+                  {formatToman(numPrice)} تومان
+                </span>
+              )}
+            </div>
           </div>
 
           {/* Value Preview Box */}

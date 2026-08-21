@@ -105,7 +105,7 @@ export const DEFAULT_PHYSICAL_GOLD_ITEMS = [
     title: 'طلای ۱۸ عیار',
     unit: 'گرم' as const,
     quantity: 0,
-    unitPriceTomans: 5200000,
+    unitPriceTomans: 0,
     priceChangePercent: 0,
   },
   {
@@ -113,7 +113,7 @@ export const DEFAULT_PHYSICAL_GOLD_ITEMS = [
     title: 'طلای ۲۴ عیار (دست‌نخورده/شمش)',
     unit: 'گرم' as const,
     quantity: 0,
-    unitPriceTomans: 6930000,
+    unitPriceTomans: 0,
     priceChangePercent: 0,
   },
   {
@@ -121,7 +121,7 @@ export const DEFAULT_PHYSICAL_GOLD_ITEMS = [
     title: 'سکه تمام بهار آزادی (امامی / طرح جدید)',
     unit: 'عدد' as const,
     quantity: 0,
-    unitPriceTomans: 54500000,
+    unitPriceTomans: 0,
     priceChangePercent: 0,
   },
   {
@@ -129,7 +129,7 @@ export const DEFAULT_PHYSICAL_GOLD_ITEMS = [
     title: 'سکه تمام بهار آزادی (طرح قدیم)',
     unit: 'عدد' as const,
     quantity: 0,
-    unitPriceTomans: 50000000,
+    unitPriceTomans: 0,
     priceChangePercent: 0,
   },
   {
@@ -137,7 +137,7 @@ export const DEFAULT_PHYSICAL_GOLD_ITEMS = [
     title: 'نیم سکه بهار آزادی',
     unit: 'عدد' as const,
     quantity: 0,
-    unitPriceTomans: 28500000,
+    unitPriceTomans: 0,
     priceChangePercent: 0,
   },
   {
@@ -145,7 +145,7 @@ export const DEFAULT_PHYSICAL_GOLD_ITEMS = [
     title: 'ربع سکه بهار آزادی',
     unit: 'عدد' as const,
     quantity: 0,
-    unitPriceTomans: 17500000,
+    unitPriceTomans: 0,
     priceChangePercent: 0,
   },
   {
@@ -153,7 +153,7 @@ export const DEFAULT_PHYSICAL_GOLD_ITEMS = [
     title: 'سکه یک گرمی',
     unit: 'عدد' as const,
     quantity: 0,
-    unitPriceTomans: 8500000,
+    unitPriceTomans: 0,
     priceChangePercent: 0,
   },
 ];

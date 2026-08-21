@@ -69,6 +69,7 @@ const AppContent: React.FC = () => {
     goldHolding,
     physicalGoldItems,
     isRefreshingGold,
+    isGoldFetchError,
     totalPhysicalGoldValueTomans,
     updatePhysicalGoldQuantity,
     updatePhysicalGoldPrice,
@@ -182,6 +183,7 @@ const AppContent: React.FC = () => {
               physicalGoldItems={physicalGoldItems}
               totalPhysicalGoldValueTomans={totalPhysicalGoldValueTomans}
               isRefreshingGold={isRefreshingGold}
+              isGoldFetchError={isGoldFetchError}
               onRefreshPhysicalGold={refreshPhysicalGoldPrices}
               onUpdatePhysicalGoldQuantity={updatePhysicalGoldQuantity}
               onUpdatePhysicalGoldPrice={updatePhysicalGoldPrice}

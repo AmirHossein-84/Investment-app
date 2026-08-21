@@ -8,6 +8,8 @@ import {
   ArrowDownRight,
   Clock,
   ShieldCheck,
+  AlertCircle,
+  WifiOff,
 } from 'lucide-react';
 import { PhysicalGoldItem, PhysicalGoldType } from '../../types/investment';
 import { formatToman, formatPercent, toPersianDigits } from '../../utils/formatters';
@@ -18,6 +20,7 @@ interface PhysicalGoldSectionProps {
   items: PhysicalGoldItem[];
   totalValueTomans: number;
   isRefreshing: boolean;
+  isGoldFetchError?: boolean;
   onRefresh: () => Promise<void>;
   onUpdateQuantity: (id: PhysicalGoldType, quantity: number) => void;
   onUpdatePrice: (id: PhysicalGoldType, priceTomans: number, isCustom: boolean) => void;
@@ -28,6 +31,7 @@ export const PhysicalGoldSection: React.FC<PhysicalGoldSectionProps> = ({
   items,
   totalValueTomans,
   isRefreshing,
+  isGoldFetchError = false,
   onRefresh,
   onUpdateQuantity,
   onUpdatePrice,
@@ -38,8 +42,12 @@ export const PhysicalGoldSection: React.FC<PhysicalGoldSectionProps> = ({
   const handleRefresh = async () => {
     triggerHaptic('light');
     await onRefresh();
-    onNotify?.('قیمت‌های لحظه‌ای طلا و سکه به‌روزرسانی شدند', 'success');
+    if (!isGoldFetchError) {
+      onNotify?.('قیمت‌های لحظه‌ای طلا و سکه به‌روزرسانی شدند', 'success');
+    }
   };
+
+  const hasAnyPrice = items.some((i) => i.unitPriceTomans > 0);
 
   return (
     <div className="p-4 sm:p-6 rounded-3xl bg-gradient-to-br from-amber-950/30 via-slate-900 to-slate-950 border border-gold-500/40 shadow-xl space-y-4">
@@ -70,6 +78,21 @@ export const PhysicalGoldSection: React.FC<PhysicalGoldSectionProps> = ({
         </button>
       </div>
 
+      {/* Smart Warning Banner: Network / VPN Issue */}
+      {(isGoldFetchError || !hasAnyPrice) && (
+        <div className="p-3.5 rounded-2xl bg-amber-950/60 border border-amber-500/40 flex items-start gap-3 text-xs text-amber-200 animate-fadeIn">
+          <WifiOff className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
+          <div className="space-y-1">
+            <span className="font-black block text-amber-300">
+              عدم امکان استعلام قیمت‌های روز طلا و سکه
+            </span>
+            <p className="text-[11px] text-amber-200/90 leading-relaxed">
+              لطفاً اتصال اینترنت خود را بررسی نمایید. وب‌سرویس‌های شبکه اطلاع‌رسانی طلا (TGJU) سرورهای داخلی هستند؛ بنابراین در صورت روشن بودن <strong>فیلترشکن (VPN)</strong>، آن را خاموش کرده و دکمه به‌روزرسانی 🔄 را بزنید.
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Grid of Gold & Coin Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         {items.map((item) => {
@@ -77,6 +100,7 @@ export const PhysicalGoldSection: React.FC<PhysicalGoldSectionProps> = ({
           const itemTotalVal = item.quantity * item.unitPriceTomans;
           const changePct = item.priceChangePercent || 0;
           const isPositive = changePct >= 0;
+          const hasPrice = item.unitPriceTomans > 0;
 
           return (
             <div
@@ -88,7 +112,7 @@ export const PhysicalGoldSection: React.FC<PhysicalGoldSectionProps> = ({
               className={`p-3.5 rounded-2xl border transition-all cursor-pointer space-y-2.5 interactive-tap ${
                 hasHolding
                   ? 'bg-slate-950/90 border-gold-500/40 hover:border-gold-500/70 shadow-lg'
-                  : 'bg-slate-950/50 border-slate-800/80 hover:border-slate-700 opacity-80 hover:opacity-100'
+                  : 'bg-slate-950/50 border-slate-800/80 hover:border-slate-700 opacity-85 hover:opacity-100'
               }`}
             >
               {/* Card Header: Title + Price Change */}
@@ -99,12 +123,17 @@ export const PhysicalGoldSection: React.FC<PhysicalGoldSectionProps> = ({
                     <span>{item.title}</span>
                   </h4>
                   <div className="text-[11px] text-slate-400 mt-0.5">
-                    نرخ هر {item.unit}: <span className="font-bold text-slate-200">{formatToman(item.unitPriceTomans)}</span> ت
+                    نرخ هر {item.unit}:{' '}
+                    {hasPrice ? (
+                      <span className="font-bold text-slate-200">{formatToman(item.unitPriceTomans)} ت</span>
+                    ) : (
+                      <span className="text-amber-400 font-medium text-[10px]">در انتظار دریافت نرخ...</span>
+                    )}
                   </div>
                 </div>
 
                 <div className="text-left shrink-0">
-                  {changePct !== 0 && (
+                  {changePct !== 0 && hasPrice && (
                     <span
                       className={`text-[10px] font-bold px-1.5 py-0.2 rounded-md inline-flex items-center gap-0.5 dir-ltr ${
                         isPositive
@@ -135,7 +164,7 @@ export const PhysicalGoldSection: React.FC<PhysicalGoldSectionProps> = ({
                 <div className="text-left">
                   <span className="text-[10px] text-slate-400 block">ارزش کل:</span>
                   <span className="font-black text-gold-400">
-                    {formatToman(itemTotalVal)} ت
+                    {hasPrice ? `${formatToman(itemTotalVal)} ت` : '—'}
                   </span>
                 </div>
               </div>

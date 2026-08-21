@@ -44,6 +44,7 @@ export function useInvestmentState(props?: UseInvestmentStateProps) {
   const [goldHolding, setGoldHoldingState] = useState<GoldHolding>(() => loadGoldHolding());
   const [physicalGoldItems, setPhysicalGoldItemsState] = useState<PhysicalGoldItem[]>(() => loadPhysicalGold());
   const [isRefreshingGold, setIsRefreshingGold] = useState<boolean>(false);
+  const [isGoldFetchError, setIsGoldFetchError] = useState<boolean>(false);
   const [transactions, setTransactionsState] = useState<TransactionRecord[]>(() => loadTransactions());
   const [notification, setNotification] = useState<{ message: string; type: 'success' | 'info' | 'error' } | null>(null);
 
@@ -122,24 +123,30 @@ export function useInvestmentState(props?: UseInvestmentStateProps) {
     setIsRefreshingGold(true);
     try {
       const liveRates = await physicalGoldService.fetchLiveRates();
-      setPhysicalGoldItemsState((prev) => {
-        const updated = prev.map((item) => {
-          const liveRate = liveRates[item.id];
-          if (liveRate && !item.isCustomPrice) {
-            return {
-              ...item,
-              unitPriceTomans: liveRate.priceTomans,
-              priceChangePercent: liveRate.changePercent,
-              lastFetchedAt: Date.now(),
-            };
-          }
-          return item;
+      const hasRates = Object.keys(liveRates).length > 0;
+      setIsGoldFetchError(!hasRates);
+
+      if (hasRates) {
+        setPhysicalGoldItemsState((prev) => {
+          const updated = prev.map((item) => {
+            const liveRate = liveRates[item.id];
+            if (liveRate && !item.isCustomPrice) {
+              return {
+                ...item,
+                unitPriceTomans: liveRate.priceTomans,
+                priceChangePercent: liveRate.changePercent,
+                lastFetchedAt: Date.now(),
+              };
+            }
+            return item;
+          });
+          savePhysicalGold(updated);
+          return updated;
         });
-        savePhysicalGold(updated);
-        return updated;
-      });
+      }
     } catch (e) {
       console.warn('Failed to refresh physical gold prices:', e);
+      setIsGoldFetchError(true);
     } finally {
       setIsRefreshingGold(false);
     }
@@ -362,6 +369,7 @@ export function useInvestmentState(props?: UseInvestmentStateProps) {
     updateGoldHolding,
     physicalGoldItems,
     isRefreshingGold,
+    isGoldFetchError,
     totalPhysicalGoldValueTomans,
     updatePhysicalGoldQuantity,
     updatePhysicalGoldPrice,
