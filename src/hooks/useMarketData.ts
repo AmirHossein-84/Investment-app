@@ -25,7 +25,19 @@ export interface CombinedMarketItem {
 }
 
 export function useMarketData() {
-  const [instruments, setInstruments] = useState<MarketInstrument[]>(() => loadMarketInstruments());
+  const [instruments, setInstruments] = useState<MarketInstrument[]>(() => {
+    const loaded = loadMarketInstruments();
+    return loaded.map((inst) => {
+      if (inst.symbol === 'عیار' && inst.providerInstrumentId !== '65883838195688438') {
+        return {
+          ...inst,
+          providerInstrumentId: '65883838195688438',
+          name: 'صندوق س. پشتوانه طلای لوتوس',
+        };
+      }
+      return inst;
+    });
+  });
   const [holdings, setHoldings] = useState<UserMarketHolding[]>(() => loadMarketHoldings());
   const [quotes, setQuotes] = useState<Record<string, MarketQuote>>({});
   const [marketStatus, setMarketStatus] = useState<MarketStatus | null>(null);
