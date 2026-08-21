@@ -3,6 +3,7 @@ import { useInvestmentState } from './hooks/useInvestmentState';
 import { MarketDataProvider, useMarketData } from './hooks/useMarketData';
 import { useNobitex } from './hooks/useNobitex';
 import { useTheme } from './hooks/useTheme';
+import { useCurrencyDisplay } from './hooks/useCurrencyDisplay';
 import { Header } from './components/layout/Header';
 import { BottomNav } from './components/layout/BottomNav';
 import { DashboardView } from './components/dashboard/DashboardView';
@@ -18,6 +19,15 @@ const AppContent: React.FC = () => {
   const { isDark, toggleTheme } = useTheme();
   const [activeGoldFund, setActiveGoldFund] = useState<string>('عیار');
   const [isRefreshingAll, setIsRefreshingAll] = useState(false);
+
+  const {
+    currencyMode,
+    usdtRateTomans,
+    toggleCurrencyMode,
+    formatCurrency,
+    toDisplayValue,
+    refreshUsdtRate,
+  } = useCurrencyDisplay();
 
   const {
     totalGoldMarketValueTomans,
@@ -107,6 +117,7 @@ const AppContent: React.FC = () => {
       await Promise.all([
         refreshQuotes(true),
         refreshPhysicalGoldPrices(),
+        refreshUsdtRate(),
         isNobitexConfigured
           ? syncWithNobitex(cryptoAssets, updateCryptoAssets)
           : refreshCryptoPrices(cryptoAssets, updateCryptoAssets),
@@ -148,6 +159,11 @@ const AppContent: React.FC = () => {
             settings={settings}
             updateSettings={updateSettings}
             isRefreshing={isRefreshingAll}
+            currencyMode={currencyMode}
+            usdtRateTomans={usdtRateTomans}
+            toggleCurrencyMode={toggleCurrencyMode}
+            formatCurrency={formatCurrency}
+            toDisplayValue={toDisplayValue}
             onRefreshAll={handleRefreshAll}
             onApplyPurchases={applyPurchasesToHoldings}
             onNavigateToTab={setActiveTab}

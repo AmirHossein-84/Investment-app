@@ -14,6 +14,7 @@ import {
   PieChart,
   ShieldCheck,
   ChevronLeft,
+  DollarSign,
 } from 'lucide-react';
 import {
   CryptoAsset,
@@ -27,6 +28,7 @@ import { CapitalInputCard } from './CapitalInputCard';
 import { GoldBuyCard } from '../calculation/GoldBuyCard';
 import { formatToman, formatPercent, toPersianDigits } from '../../utils/formatters';
 import { triggerHaptic } from '../../utils/haptics';
+import { CurrencyDisplayMode } from '../../hooks/useCurrencyDisplay';
 
 interface DashboardViewProps {
   totalInputAmount: number;
@@ -46,6 +48,11 @@ interface DashboardViewProps {
   settings: AppSettings;
   updateSettings: (settings: Partial<AppSettings>) => void;
   isRefreshing: boolean;
+  currencyMode?: CurrencyDisplayMode;
+  usdtRateTomans?: number;
+  toggleCurrencyMode?: () => void;
+  formatCurrency?: (amountTomans: number, showUnit?: boolean) => string;
+  toDisplayValue?: (amountTomans: number) => number;
   onRefreshAll: () => Promise<void>;
   onApplyPurchases: () => void;
   onNavigateToTab: (tab: any) => void;
@@ -70,6 +77,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   settings,
   updateSettings,
   isRefreshing,
+  currencyMode = 'toman',
+  usdtRateTomans = 93000,
+  toggleCurrencyMode = () => {},
+  formatCurrency = (v) => `${formatToman(v)} تومان`,
+  toDisplayValue = (v) => v,
   onRefreshAll,
   onApplyPurchases,
   onNavigateToTab,
@@ -88,7 +100,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     chartItems.push({
       id: 'physical_gold',
       label: 'طلای فیزیکی و سکه',
-      value: physicalGoldValue,
+      value: toDisplayValue(physicalGoldValue),
       color: '#FBBF24', // Radiant Golden Yellow
       sublabel: 'طلا و مسکوکات',
     });
@@ -98,7 +110,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     chartItems.push({
       id: 'bourse_gold',
       label: 'صندوق‌های طلای بورس',
-      value: bourseGoldValue,
+      value: toDisplayValue(bourseGoldValue),
       color: '#D97706', // Rich Amber Gold
       sublabel: 'صندوق‌های ETF طلا',
     });
@@ -109,7 +121,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     chartItems.push({
       id: 'gold',
       label: 'طلا و صندوق‌های بورسی',
-      value: goldHoldingValue,
+      value: toDisplayValue(goldHoldingValue),
       color: '#D4AF37',
       sublabel: `هدف: ${toPersianDigits(settings.goldPercent)}%`,
       targetPercent: settings.goldPercent,
@@ -119,7 +131,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   chartItems.push({
     id: 'crypto',
     label: 'ارزهای دیجیتال',
-    value: totalCryptoValue,
+    value: toDisplayValue(totalCryptoValue),
     color: '#6366F1',
     sublabel: `هدف: ${toPersianDigits(settings.cryptoPercent)}%`,
     targetPercent: settings.cryptoPercent,
@@ -129,7 +141,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     chartItems.push({
       id: 'cash',
       label: 'موجودی نقدی نوبیتکس',
-      value: tomanCashBalance,
+      value: toDisplayValue(tomanCashBalance),
       color: '#10B981',
       sublabel: 'نقد ریالی',
     });
@@ -147,6 +159,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const isGoldUnderweight = goldPercentActual < settings.goldPercent - 2;
   const isCryptoUnderweight = cryptoPercentActual < settings.cryptoPercent - 2;
 
+  const totalPortfolioWithCash = totalPortfolioValue + tomanCashBalance;
+
   return (
     <PullToRefreshContainer onRefresh={onRefreshAll} isRefreshing={isRefreshing} className="space-y-5 pb-24">
       
@@ -155,27 +169,68 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         <div className="absolute top-0 right-0 w-48 h-48 bg-gold-500/5 rounded-full blur-3xl pointer-events-none" />
         <div className="absolute bottom-0 left-0 w-48 h-48 bg-indigo-500/5 rounded-full blur-3xl pointer-events-none" />
 
-        <div className="flex items-center justify-between gap-3">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-center gap-2.5">
-            <div className="w-10 h-10 rounded-2xl bg-gold-500/20 text-gold-400 flex items-center justify-center font-bold text-lg border border-gold-500/30">
+            <div className="w-10 h-10 rounded-2xl bg-gold-500/20 text-gold-400 flex items-center justify-center font-bold text-lg border border-gold-500/30 shrink-0">
               <ShieldCheck className="w-5 h-5 text-gold-400" />
             </div>
             <div>
-              <span className="text-[11px] font-bold text-slate-400 block">ارزش کل دارایی‌ها (سبد سرمایه)</span>
-              <h2 className="text-xl sm:text-2xl font-black text-slate-100 mt-0.5">
-                {formatToman(totalPortfolioValue + tomanCashBalance)} <span className="text-xs text-slate-400 font-normal">تومان</span>
+              <div className="flex items-center gap-2">
+                <span className="text-[11px] font-bold text-slate-400 block">ارزش کل دارایی‌ها (سبد سرمایه)</span>
+                {currencyMode === 'usd' && (
+                  <span className="text-[10px] px-2 py-0.2 rounded-full bg-emerald-500/20 text-emerald-400 font-bold border border-emerald-500/30">
+                    USD ($)
+                  </span>
+                )}
+              </div>
+              <h2 className="text-xl sm:text-2xl font-black text-slate-100 mt-0.5 dir-ltr text-right sm:text-right">
+                {formatCurrency(totalPortfolioWithCash)}
               </h2>
+              {currencyMode === 'usd' && (
+                <span className="text-[10px] text-slate-400 block mt-0.5">
+                  نرخ مبنا: ۱ تتر = {formatToman(usdtRateTomans)} تومان
+                </span>
+              )}
             </div>
           </div>
 
-          <button
-            onClick={onRefreshAll}
-            disabled={isRefreshing}
-            className="p-2.5 rounded-2xl bg-slate-800/80 hover:bg-slate-700 text-slate-300 hover:text-gold-300 border border-slate-700 transition-all touch-target"
-            title="به‌روزرسانی قیمت‌ها و دارایی‌ها"
-          >
-            <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin text-gold-400' : ''}`} />
-          </button>
+          <div className="flex items-center gap-2 self-end sm:self-center">
+            {/* Currency Mode Switch Button */}
+            <button
+              onClick={() => {
+                triggerHaptic('medium');
+                toggleCurrencyMode();
+              }}
+              className={`px-3 py-2 rounded-2xl border text-xs font-black transition-all flex items-center gap-1.5 interactive-tap shadow-sm touch-target ${
+                currencyMode === 'usd'
+                  ? 'bg-emerald-950/80 text-emerald-300 border-emerald-500/50 hover:bg-emerald-900/80 shadow-emerald-500/10'
+                  : 'bg-slate-800/90 text-slate-200 border-slate-700 hover:text-gold-300 hover:border-gold-500/50'
+              }`}
+              title={currencyMode === 'usd' ? 'تغییر نمایش به تومان' : 'تغییر نمایش به دلار (بر مبنای نرخ تتر)'}
+            >
+              {currencyMode === 'usd' ? (
+                <>
+                  <span>🪙</span>
+                  <span>نمایش به تومان</span>
+                </>
+              ) : (
+                <>
+                  <DollarSign className="w-3.5 h-3.5 text-emerald-400" />
+                  <span>نمایش به دلار ($)</span>
+                </>
+              )}
+            </button>
+
+            {/* Refresh Button */}
+            <button
+              onClick={onRefreshAll}
+              disabled={isRefreshing}
+              className="p-2.5 rounded-2xl bg-slate-800/80 hover:bg-slate-700 text-slate-300 hover:text-gold-300 border border-slate-700 transition-all touch-target"
+              title="به‌روزرسانی قیمت‌ها و دارایی‌ها"
+            >
+              <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin text-gold-400' : ''}`} />
+            </button>
+          </div>
         </div>
 
         {/* Breakdown chips */}
@@ -196,8 +251,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   {totalPortfolioValue > 0 ? formatPercent((physicalGoldValue / totalPortfolioValue) * 100) : '۰٪'}
                 </span>
               </div>
-              <div className="text-sm font-black text-slate-100">
-                {formatToman(physicalGoldValue)} <span className="text-[9px] text-slate-400 font-normal">ت</span>
+              <div className="text-sm font-black text-slate-100 dir-ltr text-right">
+                {formatCurrency(physicalGoldValue)}
               </div>
             </div>
           )}
@@ -217,8 +272,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   {totalPortfolioValue > 0 ? formatPercent((bourseGoldValue / totalPortfolioValue) * 100) : '۰٪'}
                 </span>
               </div>
-              <div className="text-sm font-black text-slate-100">
-                {formatToman(bourseGoldValue)} <span className="text-[9px] text-slate-400 font-normal">ت</span>
+              <div className="text-sm font-black text-slate-100 dir-ltr text-right">
+                {formatCurrency(bourseGoldValue)}
               </div>
             </div>
           )}
@@ -236,8 +291,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 </span>
                 <span className="text-gold-300 font-bold">{formatPercent(goldPercentActual)}</span>
               </div>
-              <div className="text-sm font-black text-slate-100">
-                {formatToman(goldHoldingValue)} <span className="text-[9px] text-slate-400 font-normal">ت</span>
+              <div className="text-sm font-black text-slate-100 dir-ltr text-right">
+                {formatCurrency(goldHoldingValue)}
               </div>
             </div>
           )}
@@ -254,8 +309,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               </span>
               <span className="text-indigo-300 font-bold">{formatPercent(cryptoPercentActual)}</span>
             </div>
-            <div className="text-sm font-black text-slate-100">
-              {formatToman(totalCryptoValue)} <span className="text-[9px] text-slate-400 font-normal">ت</span>
+            <div className="text-sm font-black text-slate-100 dir-ltr text-right">
+              {formatCurrency(totalCryptoValue)}
             </div>
           </div>
 
@@ -272,8 +327,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 </span>
                 <span className="text-emerald-300 font-bold">{formatPercent(cashPercentActual)}</span>
               </div>
-              <div className="text-sm font-black text-slate-100">
-                {formatToman(tomanCashBalance)} <span className="text-[9px] text-slate-400 font-normal">ت</span>
+              <div className="text-sm font-black text-slate-100 dir-ltr text-right">
+                {formatCurrency(tomanCashBalance)}
               </div>
             </div>
           )}
@@ -307,7 +362,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         <PortfolioDonutChart
           items={chartItems}
           centerTitle="ارزش سبد"
-          centerSubtitle={`${formatToman(totalPortfolioValue)} ت`}
+          centerSubtitle={formatCurrency(totalPortfolioValue, true)}
           size={210}
           strokeWidth={22}
         />
@@ -418,8 +473,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     <div className="mt-3 pt-3 border-t border-slate-800/80 flex items-center justify-between">
                       <div>
                         <span className="text-[10px] text-slate-400 block">مبلغ خرید پیشنهادی:</span>
-                        <span className={`text-sm font-black ${buy.suggestedBuy > 0 ? 'text-indigo-300' : 'text-slate-500'}`}>
-                          {formatToman(buy.suggestedBuy)} تومان
+                        <span className={`text-sm font-black dir-ltr text-right ${buy.suggestedBuy > 0 ? 'text-indigo-300' : 'text-slate-500'}`}>
+                          {formatCurrency(buy.suggestedBuy)}
                         </span>
                       </div>
 
