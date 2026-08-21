@@ -88,9 +88,11 @@ const AppContent: React.FC = () => {
   const goldEtfUnitPrice = activeGoldQuote?.lastPriceTomans || 35000;
   const goldEtfUnitChange = activeGoldQuote?.priceChangePercent || 0;
 
-  const totalCombinedGoldValue = (goldHolding.currentHoldingValue || 0) + totalGoldMarketValueTomans;
+  const totalGoldValue = totalGoldMarketValueTomans > 0
+    ? totalGoldMarketValueTomans
+    : (goldHolding.currentHoldingValue || 0);
   const totalCryptoValue = cryptoAssets.reduce((sum, a) => sum + (a.currentHoldingValue || 0), 0);
-  const totalPortfolioValue = totalCombinedGoldValue + totalCryptoValue;
+  const totalPortfolioValue = totalGoldValue + totalCryptoValue;
 
   // Unified pull-to-refresh handler across both TSETMC and Nobitex
   const handleRefreshAll = async () => {
@@ -126,7 +128,7 @@ const AppContent: React.FC = () => {
             setTotalInputAmount={setInputAmount}
             calculationResult={calculationResult}
             cryptoAssets={cryptoAssets}
-            goldHoldingValue={totalCombinedGoldValue}
+            goldHoldingValue={totalGoldValue}
             totalCryptoValue={totalCryptoValue}
             totalPortfolioValue={totalPortfolioValue}
             tomanCashBalance={tomanCashBalance}

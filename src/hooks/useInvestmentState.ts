@@ -122,14 +122,15 @@ export function useInvestmentState(props?: UseInvestmentStateProps) {
     });
   }, [showNotification]);
 
-  // Combine physical gold holding + live TSETMC gold funds valuation
+  // Use live TSETMC gold funds valuation as primary source, fallback to local holding if none
   const effectiveGoldHolding: GoldHolding = useMemo(() => {
-    const physicalGoldVal = goldHolding.currentHoldingValue || 0;
-    const tsetmcGoldVal = props?.externalGoldValueTomans || 0;
-    return {
-      ...goldHolding,
-      currentHoldingValue: physicalGoldVal + tsetmcGoldVal,
-    };
+    if (props?.externalGoldValueTomans !== undefined && props.externalGoldValueTomans > 0) {
+      return {
+        ...goldHolding,
+        currentHoldingValue: props.externalGoldValueTomans,
+      };
+    }
+    return goldHolding;
   }, [props?.externalGoldValueTomans, goldHolding]);
 
   // Main portfolio rebalancing calculation result
