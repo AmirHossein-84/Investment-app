@@ -1,11 +1,17 @@
 import { useState, useEffect, useCallback } from 'react';
 import { nobitexService } from '../services/nobitex/NobitexService';
-import { formatToman, toPersianDigits } from '../utils/formatters';
+import { formatToman } from '../utils/formatters';
 
 const STORAGE_KEY = 'investment_app_currency_mode_v1';
 const DEFAULT_USDT_RATE_TOMANS = 93000;
 
 export type CurrencyDisplayMode = 'toman' | 'usd';
+
+export interface FormatCurrencyOptions {
+  showUnit?: boolean;
+  isUnitPrice?: boolean;
+  isTomanSuffix?: boolean; // Use 'ت' instead of 'تومان'
+}
 
 export interface UseCurrencyDisplayReturn {
   currencyMode: CurrencyDisplayMode;
@@ -13,7 +19,7 @@ export interface UseCurrencyDisplayReturn {
   isFetchingRate: boolean;
   toggleCurrencyMode: () => void;
   setCurrencyMode: (mode: CurrencyDisplayMode) => void;
-  formatCurrency: (amountInTomans: number, showUnit?: boolean) => string;
+  formatCurrency: (amountInTomans: number, options?: FormatCurrencyOptions | boolean) => string;
   toDisplayValue: (amountInTomans: number) => number;
   currencyUnitLabel: string;
   refreshUsdtRate: () => Promise<void>;
@@ -80,19 +86,40 @@ export function useCurrencyDisplay(): UseCurrencyDisplayReturn {
   );
 
   const formatCurrency = useCallback(
-    (amountInTomans: number, showUnit = true): string => {
+    (
+      amountInTomans: number,
+      optionsOrShowUnit?: FormatCurrencyOptions | boolean
+    ): string => {
+      const opts: FormatCurrencyOptions =
+        typeof optionsOrShowUnit === 'boolean'
+          ? { showUnit: optionsOrShowUnit }
+          : optionsOrShowUnit || { showUnit: true };
+
+      const showUnit = opts.showUnit !== false;
+
       if (currencyMode === 'usd') {
         const rate = usdtRateTomans > 0 ? usdtRateTomans : DEFAULT_USDT_RATE_TOMANS;
         const usdValue = amountInTomans / rate;
-        const formatted = usdValue.toLocaleString('en-US', {
-          minimumFractionDigits: 2,
-          maximumFractionDigits: 2,
-        });
+
+        let formatted: string;
+        if (opts.isUnitPrice && usdValue > 0 && usdValue < 1) {
+          formatted = usdValue.toLocaleString('en-US', {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 4,
+          });
+        } else {
+          formatted = usdValue.toLocaleString('en-US', {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
+          });
+        }
+
         return showUnit ? `$ ${formatted}` : formatted;
       }
 
       const tomanFormatted = formatToman(amountInTomans);
-      return showUnit ? `${tomanFormatted} تومان` : tomanFormatted;
+      if (!showUnit) return tomanFormatted;
+      return opts.isTomanSuffix ? `${tomanFormatted} ت` : `${tomanFormatted} تومان`;
     },
     [currencyMode, usdtRateTomans]
   );

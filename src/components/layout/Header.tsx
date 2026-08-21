@@ -1,19 +1,32 @@
 import React from 'react';
-import { Sun, Moon, Shield } from 'lucide-react';
+import { Sun, Moon, Shield, DollarSign } from 'lucide-react';
 import { getPersianFormattedDate } from '../../utils/formatters';
 import { triggerHaptic } from '../../utils/haptics';
+import { CurrencyDisplayMode } from '../../hooks/useCurrencyDisplay';
 
 interface HeaderProps {
   isDark: boolean;
   toggleTheme: () => void;
+  currencyMode?: CurrencyDisplayMode;
+  toggleCurrencyMode?: () => void;
 }
 
-export const Header: React.FC<HeaderProps> = ({ isDark, toggleTheme }) => {
+export const Header: React.FC<HeaderProps> = ({
+  isDark,
+  toggleTheme,
+  currencyMode = 'toman',
+  toggleCurrencyMode,
+}) => {
   const todayPersian = getPersianFormattedDate(new Date()).split('ساعت')[0];
 
   const handleToggleTheme = () => {
     triggerHaptic('medium');
     toggleTheme();
+  };
+
+  const handleToggleCurrency = () => {
+    triggerHaptic('medium');
+    toggleCurrencyMode?.();
   };
 
   return (
@@ -44,8 +57,34 @@ export const Header: React.FC<HeaderProps> = ({ isDark, toggleTheme }) => {
           </div>
         </div>
 
-        {/* Action button */}
+        {/* Action buttons */}
         <div className="flex items-center gap-2">
+          
+          {/* Currency Toggle Button (USD / Toman) */}
+          {toggleCurrencyMode && (
+            <button
+              onClick={handleToggleCurrency}
+              className={`px-3 py-2 rounded-2xl border text-xs font-black transition-all flex items-center gap-1.5 interactive-tap touch-target shadow-sm ${
+                currencyMode === 'usd'
+                  ? 'bg-emerald-950/90 text-emerald-300 border-emerald-500/50 hover:bg-emerald-900/80 shadow-emerald-500/10'
+                  : 'bg-slate-900/90 text-slate-300 border-slate-800 hover:text-gold-300 hover:border-gold-500/40'
+              }`}
+              title={currencyMode === 'usd' ? 'تغییر نمایش کل اپلیکیشن به تومان' : 'تغییر نمایش کل اپلیکیشن به دلار ($)'}
+            >
+              {currencyMode === 'usd' ? (
+                <>
+                  <span className="text-[11px]">🪙</span>
+                  <span>تومان</span>
+                </>
+              ) : (
+                <>
+                  <DollarSign className="w-3.5 h-3.5 text-emerald-400" />
+                  <span>دلار ($)</span>
+                </>
+              )}
+            </button>
+          )}
+
           {/* Theme Toggle Button */}
           <button
             onClick={handleToggleTheme}
@@ -58,6 +97,7 @@ export const Header: React.FC<HeaderProps> = ({ isDark, toggleTheme }) => {
               <Moon className="w-4 h-4 text-indigo-600" />
             )}
           </button>
+
         </div>
 
       </div>

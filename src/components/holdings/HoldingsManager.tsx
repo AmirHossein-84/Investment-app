@@ -14,6 +14,7 @@ import { AddAssetModal } from './AddAssetModal';
 import { EditAssetModal } from './EditAssetModal';
 import { NobitexIntegrationCard } from '../crypto/NobitexIntegrationCard';
 import { PhysicalGoldSection } from './PhysicalGoldSection';
+import { CurrencyDisplayMode } from '../../hooks/useCurrencyDisplay';
 
 interface HoldingsManagerProps {
   cryptoAssets: CryptoAsset[];
@@ -25,6 +26,9 @@ interface HoldingsManagerProps {
   totalPhysicalGoldValueTomans?: number;
   isRefreshingGold?: boolean;
   isGoldFetchError?: boolean;
+  currencyMode?: CurrencyDisplayMode;
+  formatCurrency?: (amountTomans: number, options?: any) => string;
+  toDisplayValue?: (amountTomans: number) => number;
   onRefreshPhysicalGold?: () => Promise<void>;
   onUpdatePhysicalGoldQuantity?: (id: PhysicalGoldType, quantity: number) => void;
   onUpdatePhysicalGoldPrice?: (id: PhysicalGoldType, priceTomans: number, isCustom: boolean) => void;
@@ -43,6 +47,9 @@ export const HoldingsManager: React.FC<HoldingsManagerProps> = ({
   totalPhysicalGoldValueTomans = 0,
   isRefreshingGold = false,
   isGoldFetchError = false,
+  currencyMode = 'toman',
+  formatCurrency = (v, opts) => `${formatToman(v)} ${opts?.isTomanSuffix ? 'ت' : 'تومان'}`,
+  toDisplayValue = (v) => v,
   onRefreshPhysicalGold = async () => {},
   onUpdatePhysicalGoldQuantity = () => {},
   onUpdatePhysicalGoldPrice = () => {},
@@ -107,6 +114,8 @@ export const HoldingsManager: React.FC<HoldingsManagerProps> = ({
         totalValueTomans={totalPhysicalGoldValueTomans}
         isRefreshing={isRefreshingGold}
         isGoldFetchError={isGoldFetchError}
+        currencyMode={currencyMode}
+        formatCurrency={formatCurrency}
         onRefresh={onRefreshPhysicalGold}
         onUpdateQuantity={onUpdatePhysicalGoldQuantity}
         onUpdatePrice={onUpdatePhysicalGoldPrice}
@@ -125,7 +134,7 @@ export const HoldingsManager: React.FC<HoldingsManagerProps> = ({
                 موجودی طلای بورسی <span className="gold-gradient-text">(صندوق‌های TSETMC)</span>
               </h3>
               <p className="text-[11px] text-slate-400">
-                ارزش کل روز: {formatToman(totalMarketValueTomans)} تومان (بر اساس نرخ زنده بورس)
+                ارزش کل روز: <span className="dir-ltr font-bold text-gold-300">{formatCurrency(totalMarketValueTomans)}</span>
               </p>
             </div>
           </div>
@@ -138,65 +147,49 @@ export const HoldingsManager: React.FC<HoldingsManagerProps> = ({
               }}
               className="px-3 py-1.5 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-gold-300 border border-gold-500/40 text-xs font-bold transition-all interactive-tap flex items-center gap-1 shrink-0"
             >
-              <TrendingUp className="w-3.5 h-3.5" />
-              <span>مدیریت در بورس</span>
+              <span>پایش قیمت‌های زنده</span>
+              <ArrowRight className="w-3.5 h-3.5 rotate-180" />
             </button>
           )}
         </div>
 
-        {/* Gold Items Summary Cards */}
-        {goldItems.length > 0 ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-            {goldItems.map((item) => (
-              <div
-                key={item.holding.id}
-                className="p-3.5 rounded-2xl bg-slate-950/80 border border-amber-500/30 flex items-center justify-between gap-2"
-              >
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="font-black text-sm text-gold-400">
-                      {item.instrument.symbol}
-                    </span>
-                    <span className="text-[10px] px-1.5 py-0.2 rounded-md bg-slate-900 text-slate-400">
-                      {toPersianDigits(item.holding.quantity)} واحد
-                    </span>
-                  </div>
-                  <div className="text-[11px] text-slate-400 truncate max-w-[160px] mt-0.5">
-                    {item.instrument.name}
-                  </div>
+        {/* Gold Items Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+          {goldItems.map((item) => (
+            <div
+              key={item.instrument.id}
+              className="p-3.5 rounded-2xl bg-slate-950/80 border border-slate-800/80 flex items-center justify-between gap-3"
+            >
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="font-black text-slate-100 text-sm">{item.instrument.symbol}</span>
+                  <span className="text-[10px] px-1.5 py-0.2 rounded-md bg-amber-500/10 border border-gold-500/30 text-gold-400 font-bold">
+                    صندوق طلا
+                  </span>
                 </div>
-
-                <div className="text-left">
-                  <div className="text-xs font-black text-gold-300 dir-ltr">
-                    {formatToman(item.currentValueTomans)} ت
-                  </div>
-                  <div className="text-[10px] text-slate-500 dir-ltr">
-                    نرخ: {formatToman(item.quote?.lastPriceTomans || 0)} ت
-                  </div>
+                <div className="text-[11px] text-slate-400 mt-0.5">
+                  موجودی: {item.holding ? `${toPersianDigits(item.holding.quantity)} واحد` : 'ثبت نشده'}
                 </div>
               </div>
-            ))}
-          </div>
-        ) : (
-          <div className="p-4 rounded-2xl bg-slate-950/60 border border-slate-800 text-center space-y-1.5">
-            <span className="text-xs text-slate-300 block font-medium">
-              هنوز صندوق طلایی (مانند عیار، طلا، کهربا) اضافه نکرده‌اید.
-            </span>
-            <span className="text-[11px] text-slate-500 block">
-              از تب «بورس و طلا» نماد مورد نظر خود را اضافه کنید تا ارزش لحظه‌ای آن در سبد محاسبه شود.
-            </span>
-          </div>
-        )}
+
+              <div className="text-left">
+                <div className="text-xs font-black text-gold-400 dir-ltr text-right">
+                  {item.currentValueTomans
+                    ? formatCurrency(item.currentValueTomans, { isTomanSuffix: true })
+                    : '۰ ت'}
+                </div>
+                {item.quote?.lastPriceTomans && (
+                  <div className="text-[10px] text-slate-500 dir-ltr text-right">
+                    نرخ: {formatCurrency(item.quote.lastPriceTomans, { isUnitPrice: true, isTomanSuffix: true })}
+                  </div>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
 
-      {/* 3. NOBITEX API AUTO-SYNC CARD */}
-      <NobitexIntegrationCard
-        cryptoAssets={cryptoAssets}
-        onAssetsUpdated={updateCryptoAssets}
-        onNotify={onNotify}
-      />
-
-      {/* 4. CRYPTO SECTION */}
+      {/* 3. CRYPTO HOLDINGS SECTION */}
       <div className="glass-card p-4 sm:p-6 border border-slate-800 space-y-3.5">
         <div className="flex items-center justify-between gap-3 border-b border-slate-800 pb-3">
           <div>
@@ -207,7 +200,7 @@ export const HoldingsManager: React.FC<HoldingsManagerProps> = ({
               </h3>
             </div>
             <p className="text-xs text-slate-400 mt-0.5">
-              مجموع ارزش کریپتو: {formatToman(totalCryptoValue)} تومان
+              مجموع ارزش کریپتو: <span className="dir-ltr font-bold text-indigo-300">{formatCurrency(totalCryptoValue)}</span>
             </p>
           </div>
 
@@ -243,7 +236,7 @@ export const HoldingsManager: React.FC<HoldingsManagerProps> = ({
                   <div className="flex items-center gap-1.5">
                     <span className="font-black text-slate-100 text-sm">{asset.symbol}</span>
                     <span className="text-[10px] px-1.5 py-0.2 rounded-md bg-slate-900 border border-slate-700 text-slate-400 font-bold">
-                      وزن: {toPersianDigits(asset.targetPercent)}٪
+                      وزن: {toPersianDigits(asset.targetPercent)}%
                     </span>
                   </div>
                   <div className="text-[11px] text-slate-400 truncate max-w-[130px]">
@@ -257,14 +250,14 @@ export const HoldingsManager: React.FC<HoldingsManagerProps> = ({
               {/* Balance & Edit Icon */}
               <div className="flex items-center gap-2">
                 <div className="text-left">
-                  <div className="text-xs font-black text-slate-200 dir-ltr">
+                  <div className="text-xs font-black text-slate-200 dir-ltr text-right">
                     {asset.currentHoldingValue > 0
-                      ? `${formatToman(asset.currentHoldingValue)} ت`
-                      : '۰ ت'}
+                      ? formatCurrency(asset.currentHoldingValue, { isTomanSuffix: true })
+                      : '0'}
                   </div>
                   {asset.unitPrice !== undefined && asset.unitPrice > 0 && (
-                    <div className="text-[10px] text-slate-500 dir-ltr">
-                      نرخ: {formatToman(asset.unitPrice)} ت
+                    <div className="text-[10px] text-slate-500 dir-ltr text-right">
+                      نرخ: {formatCurrency(asset.unitPrice, { isUnitPrice: true, isTomanSuffix: true })}
                     </div>
                   )}
                 </div>

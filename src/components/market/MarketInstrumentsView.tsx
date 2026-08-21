@@ -24,6 +24,7 @@ import { AddMarketInstrumentModal } from './AddMarketInstrumentModal';
 import { EditMarketHoldingModal } from './EditMarketHoldingModal';
 import { AssetType } from '../../services/marketData/types';
 import { PhysicalGoldItem } from '../../types/investment';
+import { CurrencyDisplayMode } from '../../hooks/useCurrencyDisplay';
 
 function getAssetTypeBadge(type: AssetType, symbol: string): { label: string; bg: string; text: string; border: string } {
   if (
@@ -52,12 +53,18 @@ function getAssetTypeBadge(type: AssetType, symbol: string): { label: string; bg
 interface MarketInstrumentsViewProps {
   physicalGoldItems?: PhysicalGoldItem[];
   totalPhysicalGoldValueTomans?: number;
+  currencyMode?: CurrencyDisplayMode;
+  formatCurrency?: (amountTomans: number, options?: any) => string;
+  toDisplayValue?: (amountTomans: number) => number;
   onNavigateToHoldings?: () => void;
 }
 
 export const MarketInstrumentsView: React.FC<MarketInstrumentsViewProps> = ({
   physicalGoldItems = [],
   totalPhysicalGoldValueTomans = 0,
+  currencyMode = 'toman',
+  formatCurrency = (v, opts) => `${formatToman(v)} ${opts?.isTomanSuffix ? 'ت' : 'تومان'}`,
+  toDisplayValue = (v) => v,
   onNavigateToHoldings,
 }) => {
   const {
@@ -98,10 +105,11 @@ export const MarketInstrumentsView: React.FC<MarketInstrumentsViewProps> = ({
     .filter((item) => item.quantity > 0 && item.unitPriceTomans > 0)
     .map((item, idx) => {
       const radiantGolds = ['#FBBF24', '#F59E0B', '#FDE047', '#FEF08A'];
+      const rawVal = item.quantity * item.unitPriceTomans;
       return {
         id: `phys_${item.id}`,
         label: item.title,
-        value: item.quantity * item.unitPriceTomans,
+        value: toDisplayValue(rawVal),
         color: radiantGolds[idx % radiantGolds.length],
         sublabel: `${toPersianDigits(item.quantity)} ${item.unit} (طلای فیزیکی)`,
       };
@@ -114,7 +122,7 @@ export const MarketInstrumentsView: React.FC<MarketInstrumentsViewProps> = ({
       return {
         id: item.instrument.symbol,
         label: item.instrument.name,
-        value: item.currentValueTomans || 0,
+        value: toDisplayValue(item.currentValueTomans || 0),
         color: amberGolds[idx % amberGolds.length],
         sublabel: `${item.holding ? toPersianDigits(item.holding.quantity) + ' واحد' : ''} (صندوق بورسی)`,
       };
@@ -185,8 +193,8 @@ export const MarketInstrumentsView: React.FC<MarketInstrumentsViewProps> = ({
             <span className="text-[10px] text-slate-400 font-medium block">
               ارزش کل بورس و طلا
             </span>
-            <div className="text-sm sm:text-base font-black text-gold-400">
-              {formatToman(totalCombinedGoldAndMarketValue)} <span className="text-[10px] text-slate-400 font-normal">تومان</span>
+            <div className="text-sm sm:text-base font-black text-gold-400 dir-ltr text-right">
+              {formatCurrency(totalCombinedGoldAndMarketValue)}
             </div>
           </div>
 
@@ -196,13 +204,13 @@ export const MarketInstrumentsView: React.FC<MarketInstrumentsViewProps> = ({
             </span>
             {totalProfitTomans !== undefined ? (
               <div
-                className={`text-sm sm:text-base font-black flex items-center gap-1 ${
+                className={`text-sm sm:text-base font-black flex items-center gap-1 dir-ltr text-right ${
                   totalProfitTomans >= 0 ? 'text-emerald-400' : 'text-rose-400'
                 }`}
               >
-                <span>{formatToman(Math.abs(totalProfitTomans))} ت</span>
+                <span>{formatCurrency(Math.abs(totalProfitTomans))}</span>
                 <span className="text-[10px] font-bold">
-                  ({totalProfitPct !== undefined ? formatPercent(totalProfitPct) : '۰٪'})
+                  ({totalProfitPct !== undefined ? formatPercent(totalProfitPct) : '0%'})
                 </span>
               </div>
             ) : (
@@ -239,25 +247,25 @@ export const MarketInstrumentsView: React.FC<MarketInstrumentsViewProps> = ({
                 <div className="flex items-center gap-3 text-[10px] text-slate-400 mt-0.5">
                   <span className="flex items-center gap-1">
                     <span className="w-2 h-2 rounded-full bg-amber-400" />
-                    <span>طلای فیزیکی ({formatToman(totalPhysicalGoldValueTomans)} ت)</span>
+                    <span>طلای فیزیکی ({formatCurrency(totalPhysicalGoldValueTomans, { isTomanSuffix: true })})</span>
                   </span>
                   <span className="flex items-center gap-1">
                     <span className="w-2 h-2 rounded-full bg-amber-600" />
-                    <span>طلای بورس ({formatToman(totalMarketValueTomans)} ت)</span>
+                    <span>طلای بورس ({formatCurrency(totalMarketValueTomans, { isTomanSuffix: true })})</span>
                   </span>
                 </div>
               </div>
             </div>
 
-            <span className="text-xs font-black text-gold-400">
-              {formatToman(totalCombinedGoldAndMarketValue)} تومان
+            <span className="text-xs font-black text-gold-400 dir-ltr">
+              {formatCurrency(totalCombinedGoldAndMarketValue)}
             </span>
           </div>
 
           <PortfolioDonutChart
             items={allDonutItems}
             centerTitle="مجموع طلا"
-            centerSubtitle={`${toPersianDigits(allDonutItems.length)} قلم`}
+            centerSubtitle={formatCurrency(totalCombinedGoldAndMarketValue, true)}
             size={210}
             strokeWidth={22}
           />
@@ -303,7 +311,7 @@ export const MarketInstrumentsView: React.FC<MarketInstrumentsViewProps> = ({
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {combinedItems.map((item) => {
-            const { instrument, holding, quote, currentValueTomans, profitTomans, profitPercent } = item;
+            const { instrument, holding, quote, currentValueTomans } = item;
             const priceTomans = quote?.lastPriceTomans || 0;
             const priceChangePct = quote?.priceChangePercent || 0;
             const isPositive = priceChangePct >= 0;
@@ -335,9 +343,9 @@ export const MarketInstrumentsView: React.FC<MarketInstrumentsViewProps> = ({
                   </div>
 
                   <div className="text-left shrink-0 space-y-0.5">
-                    <div className="text-sm font-black text-slate-100">
+                    <div className="text-sm font-black text-slate-100 dir-ltr text-right">
                       {priceTomans > 0 ? (
-                        <span>{formatToman(priceTomans)} <span className="text-[10px] text-slate-400 font-normal">ت</span></span>
+                        <span>{formatCurrency(priceTomans, { isUnitPrice: true, isTomanSuffix: true })}</span>
                       ) : (
                         <span className="text-xs text-slate-500">در حال دریافت...</span>
                       )}
@@ -392,8 +400,8 @@ export const MarketInstrumentsView: React.FC<MarketInstrumentsViewProps> = ({
 
                     <div className="text-left">
                       <span className="text-[10px] text-slate-400 block">ارزش فعلی:</span>
-                      <span className="font-black text-gold-400">
-                        {formatToman(currentValueTomans || 0)} ت
+                      <span className="font-black text-gold-400 dir-ltr text-right">
+                        {formatCurrency(currentValueTomans || 0, { isTomanSuffix: true })}
                       </span>
                     </div>
                   </div>

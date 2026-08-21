@@ -134,7 +134,12 @@ const AppContent: React.FC = () => {
     <div className="min-h-screen bg-slate-950 dark:bg-dark-bg text-slate-100 selection:bg-gold-500/30 selection:text-gold-200 pb-24 transition-colors">
       
       {/* Top Header */}
-      <Header isDark={isDark} toggleTheme={toggleTheme} />
+      <Header
+        isDark={isDark}
+        toggleTheme={toggleTheme}
+        currencyMode={currencyMode}
+        toggleCurrencyMode={toggleCurrencyMode}
+      />
 
       {/* Main Container */}
       <main className="max-w-4xl mx-auto px-4 py-5 space-y-5">
@@ -177,6 +182,9 @@ const AppContent: React.FC = () => {
             <MarketInstrumentsView
               physicalGoldItems={physicalGoldItems}
               totalPhysicalGoldValueTomans={totalPhysicalGoldValueTomans}
+              currencyMode={currencyMode}
+              formatCurrency={formatCurrency}
+              toDisplayValue={toDisplayValue}
               onNavigateToHoldings={() => setActiveTab('holdings')}
             />
           </div>
@@ -187,6 +195,9 @@ const AppContent: React.FC = () => {
           <div className="animate-fadeIn">
             <CryptoMarketView
               cryptoAssets={cryptoAssets}
+              currencyMode={currencyMode}
+              formatCurrency={formatCurrency}
+              toDisplayValue={toDisplayValue}
               onAssetsUpdated={updateCryptoAssets}
               onNotify={showNotification}
             />
@@ -206,6 +217,9 @@ const AppContent: React.FC = () => {
               totalPhysicalGoldValueTomans={totalPhysicalGoldValueTomans}
               isRefreshingGold={isRefreshingGold}
               isGoldFetchError={isGoldFetchError}
+              currencyMode={currencyMode}
+              formatCurrency={formatCurrency}
+              toDisplayValue={toDisplayValue}
               onRefreshPhysicalGold={refreshPhysicalGoldPrices}
               onUpdatePhysicalGoldQuantity={updatePhysicalGoldQuantity}
               onUpdatePhysicalGoldPrice={updatePhysicalGoldPrice}

@@ -23,9 +23,13 @@ import { CardSkeleton } from '../common/SkeletonLoader';
 import { NobitexIntegrationCard } from './NobitexIntegrationCard';
 import { formatToman, formatPercent, toPersianDigits, getPersianFormattedDate } from '../../utils/formatters';
 import { triggerHaptic } from '../../utils/haptics';
+import { CurrencyDisplayMode } from '../../hooks/useCurrencyDisplay';
 
 interface CryptoMarketViewProps {
   cryptoAssets: CryptoAsset[];
+  currencyMode?: CurrencyDisplayMode;
+  formatCurrency?: (amountTomans: number, options?: any) => string;
+  toDisplayValue?: (amountTomans: number) => number;
   onAssetsUpdated: (assets: CryptoAsset[]) => void;
   onNotify?: (message: string, type?: 'success' | 'info' | 'error') => void;
 }
@@ -51,6 +55,9 @@ const POPULAR_TICKERS = [
 
 export const CryptoMarketView: React.FC<CryptoMarketViewProps> = ({
   cryptoAssets,
+  currencyMode = 'toman',
+  formatCurrency = (v, opts) => `${formatToman(v)} ${opts?.isTomanSuffix ? 'ت' : 'تومان'}`,
+  toDisplayValue = (v) => v,
   onAssetsUpdated,
   onNotify,
 }) => {
@@ -99,6 +106,8 @@ export const CryptoMarketView: React.FC<CryptoMarketViewProps> = ({
 
   useEffect(() => {
     fetchMarketStats();
+    const interval = setInterval(fetchMarketStats, 60000);
+    return () => clearInterval(interval);
   }, []);
 
   const handleRefresh = async () => {
@@ -107,23 +116,26 @@ export const CryptoMarketView: React.FC<CryptoMarketViewProps> = ({
     if (isConfigured) {
       await syncWithNobitex(cryptoAssets, onAssetsUpdated);
     }
-    onNotify?.('نرخ‌های بازار ارز دیجیتال به‌روزرسانی شدند', 'info');
+    onNotify?.('قیمت‌های بازار رمزارز به‌روزرسانی شدند', 'success');
   };
 
-  // Donut chart items from user crypto holdings
-  const totalCryptoValue = cryptoAssets.reduce((sum, a) => sum + (a.currentHoldingValue || 0), 0);
+  const totalCryptoValue = cryptoAssets.reduce(
+    (sum, a) => sum + (a.currentHoldingValue || 0),
+    0
+  );
+
+  // Build Donut Items from user owned crypto assets
   const donutItems: DonutChartItem[] = cryptoAssets
     .filter((a) => (a.currentHoldingValue || 0) > 0)
     .map((a) => ({
       id: a.id,
       label: a.name,
-      value: a.currentHoldingValue,
+      value: toDisplayValue(a.currentHoldingValue || 0),
       color: a.color,
-      sublabel: `${a.symbol} • ${formatToman(a.unitPrice || 0)} ت`,
-      targetPercent: a.targetPercent,
+      sublabel: `${a.symbol} (${toPersianDigits(a.targetPercent)}%)`,
     }));
 
-  // Filter ticker list
+  // Filter ticker list by search query
   const filteredTickers = POPULAR_TICKERS.filter((ticker) => {
     const q = searchQuery.toLowerCase().trim();
     if (!q) return true;
@@ -156,15 +168,15 @@ export const CryptoMarketView: React.FC<CryptoMarketViewProps> = ({
                 ترکیب دارایی‌های کریپتو
               </h3>
             </div>
-            <span className="text-xs font-black text-indigo-400">
-              مجموع: {formatToman(totalCryptoValue)} ت
+            <span className="text-xs font-black text-indigo-400 dir-ltr">
+              مجموع: {formatCurrency(totalCryptoValue, { isTomanSuffix: true })}
             </span>
           </div>
 
           <PortfolioDonutChart
             items={donutItems}
             centerTitle="مجموع رمزارزها"
-            centerSubtitle={`${toPersianDigits(donutItems.length)} رمزارز`}
+            centerSubtitle={formatCurrency(totalCryptoValue, true)}
             size={200}
             strokeWidth={22}
           />
@@ -248,8 +260,10 @@ export const CryptoMarketView: React.FC<CryptoMarketViewProps> = ({
                     </div>
 
                     <div className="text-left space-y-0.5 shrink-0">
-                      <span className="text-xs font-black text-slate-100 block">
-                        {priceTomans > 0 ? `${formatToman(priceTomans)} ت` : 'در حال دریافت...'}
+                      <span className="text-xs font-black text-slate-100 block dir-ltr text-right">
+                        {priceTomans > 0
+                          ? formatCurrency(priceTomans, { isUnitPrice: true, isTomanSuffix: true })
+                          : 'در حال دریافت...'}
                       </span>
                       {stat?.dayChange !== undefined && (
                         <span
@@ -274,10 +288,10 @@ export const CryptoMarketView: React.FC<CryptoMarketViewProps> = ({
                   {stat && stat.dayHigh && stat.dayLow && (
                     <div className="pt-1.5 border-t border-slate-800/80 flex items-center justify-between text-[10px] text-slate-400">
                       <span>
-                        کف ۲۴ ساعته: <strong className="text-slate-300">{formatToman(Math.round(parseFloat(stat.dayLow) / 10))}</strong>
+                        کف ۲۴ ساعته: <strong className="text-slate-300 dir-ltr">{formatCurrency(Math.round(parseFloat(stat.dayLow) / 10), { isUnitPrice: true, isTomanSuffix: true })}</strong>
                       </span>
                       <span>
-                        سقف ۲۴ ساعته: <strong className="text-slate-300">{formatToman(Math.round(parseFloat(stat.dayHigh) / 10))}</strong>
+                        سقف ۲۴ ساعته: <strong className="text-slate-300 dir-ltr">{formatCurrency(Math.round(parseFloat(stat.dayHigh) / 10), { isUnitPrice: true, isTomanSuffix: true })}</strong>
                       </span>
                     </div>
                   )}

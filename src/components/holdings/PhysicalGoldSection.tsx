@@ -15,12 +15,15 @@ import { PhysicalGoldItem, PhysicalGoldType } from '../../types/investment';
 import { formatToman, formatPercent, toPersianDigits } from '../../utils/formatters';
 import { triggerHaptic } from '../../utils/haptics';
 import { EditPhysicalGoldModal } from './EditPhysicalGoldModal';
+import { CurrencyDisplayMode } from '../../hooks/useCurrencyDisplay';
 
 interface PhysicalGoldSectionProps {
   items: PhysicalGoldItem[];
   totalValueTomans: number;
   isRefreshing: boolean;
   isGoldFetchError?: boolean;
+  currencyMode?: CurrencyDisplayMode;
+  formatCurrency?: (amountTomans: number, options?: any) => string;
   onRefresh: () => Promise<void>;
   onUpdateQuantity: (id: PhysicalGoldType, quantity: number) => void;
   onUpdatePrice: (id: PhysicalGoldType, priceTomans: number, isCustom: boolean) => void;
@@ -32,6 +35,8 @@ export const PhysicalGoldSection: React.FC<PhysicalGoldSectionProps> = ({
   totalValueTomans,
   isRefreshing,
   isGoldFetchError = false,
+  currencyMode = 'toman',
+  formatCurrency = (v, opts) => `${formatToman(v)} ${opts?.isTomanSuffix ? 'ت' : 'تومان'}`,
   onRefresh,
   onUpdateQuantity,
   onUpdatePrice,
@@ -63,7 +68,7 @@ export const PhysicalGoldSection: React.FC<PhysicalGoldSectionProps> = ({
               طلای فیزیکی و مسکوکات <span className="text-xs text-gold-400 font-bold">(نرخ زنده)</span>
             </h3>
             <p className="text-[11px] text-slate-400">
-              ارزش کل: <span className="text-gold-300 font-black">{formatToman(totalValueTomans)}</span> تومان (محاسبه در سهم ۸۰٪ طلا)
+              ارزش کل: <span className="text-gold-300 font-black dir-ltr">{formatCurrency(totalValueTomans)}</span> (محاسبه در سهم ۸۰٪ طلا)
             </p>
           </div>
         </div>
@@ -125,7 +130,9 @@ export const PhysicalGoldSection: React.FC<PhysicalGoldSectionProps> = ({
                   <div className="text-[11px] text-slate-400 mt-0.5">
                     نرخ هر {item.unit}:{' '}
                     {hasPrice ? (
-                      <span className="font-bold text-slate-200">{formatToman(item.unitPriceTomans)} ت</span>
+                      <span className="font-bold text-slate-200 dir-ltr">
+                        {formatCurrency(item.unitPriceTomans, { isUnitPrice: true, isTomanSuffix: true })}
+                      </span>
                     ) : (
                       <span className="text-amber-400 font-medium text-[10px]">در انتظار دریافت نرخ...</span>
                     )}
@@ -163,8 +170,8 @@ export const PhysicalGoldSection: React.FC<PhysicalGoldSectionProps> = ({
 
                 <div className="text-left">
                   <span className="text-[10px] text-slate-400 block">ارزش کل:</span>
-                  <span className="font-black text-gold-400">
-                    {hasPrice ? `${formatToman(itemTotalVal)} ت` : '—'}
+                  <span className="font-black text-gold-400 dir-ltr">
+                    {hasPrice ? formatCurrency(itemTotalVal, { isTomanSuffix: true }) : '—'}
                   </span>
                 </div>
               </div>
