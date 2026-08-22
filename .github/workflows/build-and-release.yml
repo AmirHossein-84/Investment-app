@@ -1,4 +1,4 @@
-name: Multi-Platform Build & Auto Release (Android APK & iOS IPA)
+name: Multi-Platform Build & Preview Release (Android APK & iOS IPA)
 
 on:
   push:
@@ -6,6 +6,11 @@ on:
     tags:
       - 'v*'
   workflow_dispatch:
+    inputs:
+      version_tag:
+        description: 'شماره نسخه دلخواه (مثال: v1.0.1 یا v1.2.0 - در صورت خالی بودن خودکار تعیین می‌شود)'
+        required: false
+        default: ''
 
 permissions:
   contents: write
@@ -122,17 +127,29 @@ jobs:
           if-no-files-found: error
 
   # ========================================================
-  # JOB 3: Create GitHub Release with APK & IPA
+  # JOB 3: Create GitHub Draft/Preview Release with APK & IPA
   # ========================================================
   release:
-    name: 📦 Publish GitHub Release
+    name: 📦 Publish Draft & Preview Release
     needs: [build-android, build-ios]
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/tags/v')
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+
+      - name: Determine Version & Tag
+        id: get_version
+        run: |
+          if [ -n "${{ github.event.inputs.version_tag }}" ]; then
+            TAG="${{ github.event.inputs.version_tag }}"
+          elif [[ "${{ github.ref }}" == refs/tags/v* ]]; then
+            TAG="${{ github.ref_name }}"
+          else
+            TAG="preview-v1.0.${{ github.run_number }}"
+          fi
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
 
       - name: Download Android Artifact
         uses: actions/download-artifact@v4
@@ -148,37 +165,40 @@ jobs:
 
       - name: Rename Release Files
         run: |
-          mv release-files/app-debug.apk release-files/Investment-App-v1.0.${{ github.run_number }}.apk
-          mv release-files/Investment-App.ipa release-files/Investment-App-v1.0.${{ github.run_number }}.ipa
+          TAG="${{ steps.get_version.outputs.tag }}"
+          mv release-files/app-debug.apk "release-files/Investment-App-${TAG}.apk"
+          mv release-files/Investment-App.ipa "release-files/Investment-App-${TAG}.ipa"
 
-      - name: Create Release
+      - name: Create Preview Draft Release
         uses: softprops/action-gh-release@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tag_name: v1.0.${{ github.run_number }}
-          name: "📱 نسخه آماده نصب 1.0.${{ github.run_number }} (Android APK & iOS IPA)"
-          draft: false
-          prerelease: false
+          tag_name: ${{ steps.get_version.outputs.tag }}
+          name: "🔍 پیش‌نمایش نسخه ${{ steps.get_version.outputs.tag }} (Android APK & iOS IPA)"
+          draft: true
+          prerelease: true
+          make_latest: false
           body: |
             <div dir="rtl">
 
-            ## 🌟 نسخه نصبی ۱.۰.${{ github.run_number }} اپلیکیشن مدیریت سرمایه
+            ## 🔍 نسخه پیش‌نمایش و پیش‌نویس (Preview & Draft) اپلیکیشن مدیریت سرمایه
 
-            این نسخه به صورت خودکار توسط **GitHub Actions** کامپایل و آماده‌سازی شده است:
+            این نسخه به صورت خودکار کامپایل شده و در وضعیت **پیش‌نویس (Draft)** قرار دارد تا پس از بررسی و تست نهایی توسط شما منتشر شود.
 
-            ### 📥 فایل‌های قابل دانلود در بخش Assets (پایین صفحه):
+            ### 📥 فایل‌های آماده تست و دانلود در بخش Assets (پایین صفحه):
             1. **🤖 اندروید (Android APK)**:
-               - فایل: **`Investment-App-v1.0.${{ github.run_number }}.apk`**
+               - فایل: **`Investment-App-${{ steps.get_version.outputs.tag }}.apk`**
                - نحوه نصب: مستقیم روی گوشی اندروید دانلود و لمس کنید تا نصب شود.
             2. **🍏 آیفون (iOS IPA)**:
-               - فایل: **`Investment-App-v1.0.${{ github.run_number }}.ipa`**
-               - نحوه نصب: فایل IPA را دانلود کرده و با نرم‌افزارهای رایگان **Sideloadly** یا **AltStore** یا **SideStore** روی آیفون نصب کنید.
-            3. **🌐 وب‌اپلیکیشن بدون نیاز به نصب (PWA)**:
-               - نیازی به دانلود فایل نیست؛ کافیست لینک وب‌اپلیکیشن در ورسل (**[investment-app-mu-five.vercel.app](https://investment-app-mu-five.vercel.app/)**) را در مرورگر **Safari** آیفون باز کرده و گزینه **Add to Home Screen** را بزنید.
+               - فایل: **`Investment-App-${{ steps.get_version.outputs.tag }}.ipa`**
+               - نحوه نصب: فایل IPA را دانلود کرده و با نرم‌افزارهای **Sideloadly** یا **AltStore** یا **SideStore** روی آیفون نصب کنید.
+            3. **🌐 وب‌اپلیکیشن (PWA)**:
+               - نیازی به دانلود فایل نیست؛ از طریق ورسل (**[investment-app-mu-five.vercel.app](https://investment-app-mu-five.vercel.app/)**) در مرورگر باز کنید.
 
             ---
-            <sub>ساخت خودکار با GitHub Actions • نسخه ۱.۰.${{ github.run_number }}</sub>
+            💡 **نحوه انتشار نهایی**:
+            پس از دانلود و اطمینان از عملکرد، روی دکمه **Edit** در بالای همین صفحه بزنید، در صورت تمایل عنوان یا تگ نسخه را ویرایش کنید و سپس گزینه **Publish release** را لمس فرمایید.
 
             </div>
           files: |
