@@ -29,13 +29,16 @@ export const NobitexIntegrationCard: React.FC<NobitexIntegrationCardProps> = ({
   const {
     isConfigured,
     isSyncing,
-    lastSyncedAt,
     profile,
     error,
     tomanCashBalance,
     syncedCoinsCount,
+    syncedTradesCount,
+    config,
     syncWithNobitex,
   } = useNobitex();
+
+  const lastSyncedAt = config.lastSyncedAt;
 
   const handleQuickSync = async () => {
     triggerHaptic('light');
@@ -108,8 +111,16 @@ export const NobitexIntegrationCard: React.FC<NobitexIntegrationCardProps> = ({
                   <span>کاربر: <strong className="text-slate-200 dir-ltr">{profile.email}</strong></span>
                 )}
                 {tomanCashBalance > 0 && (
-                  <span>• موجودی نقدی: <strong className="text-gold-400">{formatToman(tomanCashBalance)} ت</strong></span>
+                  <span>• مانده نقدی: <strong className="text-gold-400">{formatToman(tomanCashBalance)} ت</strong></span>
                 )}
+                <span>
+                  • سوابق خرید:{' '}
+                  <strong className={syncedTradesCount > 0 ? 'text-emerald-400' : 'text-slate-400'}>
+                    {syncedTradesCount > 0
+                      ? `${toPersianDigits(syncedTradesCount)} معامله شناسایی شد`
+                      : 'ثبت دستی / بدون معامله'}
+                  </strong>
+                </span>
               </div>
 
               {lastSyncedAt && (

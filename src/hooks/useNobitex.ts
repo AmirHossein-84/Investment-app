@@ -21,6 +21,7 @@ export function useNobitex() {
   const [error, setError] = useState<string | null>(null);
   const [tomanCashBalance, setTomanCashBalance] = useState<number>(0);
   const [syncedCoinsCount, setSyncedCoinsCount] = useState<number>(0);
+  const [syncedTradesCount, setSyncedTradesCount] = useState<number>(0);
 
   const isConfigured = Boolean(
     (config.authType === 'api_key' && config.publicKey?.trim() && config.secretKey?.trim()) ||
@@ -46,6 +47,7 @@ export function useNobitex() {
     saveNobitexConfig(cleared);
     setProfile(null);
     setTomanCashBalance(0);
+    setSyncedTradesCount(0);
     setError(null);
   }, []);
 
@@ -82,6 +84,7 @@ export function useNobitex() {
         onAssetsUpdated(result.updatedAssets);
         setTomanCashBalance(result.tomanBalance);
         setSyncedCoinsCount(result.syncedCount);
+        setSyncedTradesCount(result.tradesCount || 0);
         if (result.profile) {
           setProfile(result.profile);
         }
@@ -138,7 +141,7 @@ export function useNobitex() {
 
         onAssetsUpdated(updated);
       } catch (e) {
-        console.warn('[Nobitex Hook] Market stats auto-fetch skipped:', e);
+        console.warn('[Nobitex Hook] Market stats refresh failed:', e);
       }
     },
     []
@@ -146,13 +149,14 @@ export function useNobitex() {
 
   return {
     config,
+    profile,
     isConfigured,
     isSyncing,
     lastSyncedAt: config.lastSyncedAt,
-    profile,
     error,
     tomanCashBalance,
     syncedCoinsCount,
+    syncedTradesCount,
     saveConfig,
     removeConfig,
     syncWithNobitex,

@@ -146,11 +146,12 @@ class NobitexService {
   }
 
   /**
-   * Fetch User Trades (History of executed buy/sell orders)
+   * Fetch User Trades (History of executed buy/sell orders in last 180 days)
+   * Official Doc: https://apidocs.nobitex.ir/spot_trade/فهرست-معاملات-کاربر
    */
   async getUserTrades(config: NobitexConfig): Promise<any[]> {
     const base = this.getBaseUrl();
-    const path = '/market/trades/list';
+    const path = '/market/trades/list?pageSize=500';
     const url = `${base}${path}`;
 
     try {
@@ -167,20 +168,22 @@ class NobitexService {
       });
 
       if (!res.ok) {
-        // Fallback to POST
-        const postHeaders = await this.getRequestHeaders({
+        // Fallback without query params in path
+        const fallbackPath = '/market/trades/list';
+        const fallbackHeaders = await this.getRequestHeaders({
           config,
-          method: 'POST',
-          path,
+          method: 'GET',
+          path: fallbackPath,
           body: '',
         });
-        const postRes = await fetch(url, {
-          method: 'POST',
-          headers: postHeaders,
+        const fallbackRes = await fetch(`${base}${fallbackPath}`, {
+          method: 'GET',
+          headers: fallbackHeaders,
         });
-        if (postRes.ok) {
-          const postData = await postRes.json();
-          return postData.trades || [];
+
+        if (fallbackRes.ok) {
+          const fallbackData = await fallbackRes.json();
+          return fallbackData.trades || [];
         }
         return [];
       }
@@ -189,6 +192,39 @@ class NobitexService {
       return data.trades || [];
     } catch (e) {
       console.warn('[NobitexService] Could not fetch user trades:', e);
+      return [];
+    }
+  }
+
+  /**
+   * Fetch User Orders (Orders list fallback)
+   * Official Doc: https://apidocs.nobitex.ir/spot_trade/فهرست-سفارش-های-کاربر
+   */
+  async getUserOrders(config: NobitexConfig): Promise<any[]> {
+    const base = this.getBaseUrl();
+    const path = '/market/orders/list?status=all';
+    const url = `${base}${path}`;
+
+    try {
+      const headers = await this.getRequestHeaders({
+        config,
+        method: 'GET',
+        path,
+        body: '',
+      });
+
+      const res = await fetch(url, {
+        method: 'GET',
+        headers,
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        return data.orders || [];
+      }
+      return [];
+    } catch (e) {
+      console.warn('[NobitexService] Could not fetch user orders:', e);
       return [];
     }
   }
@@ -225,10 +261,29 @@ class NobitexService {
   }
 
   /**
+   * Parse coin symbol from Nobitex trade or order
+   * e.g. "BTCIRT" -> { src: "btc", dst: "irt" }
+   * e.g. "ETHUSDT" -> { src: "eth", dst: "usdt" }
+   */
+  private parsePairSymbol(symbolStr: string): { src: string; dst: string } {
+    const clean = symbolStr.toLowerCase().trim().replace(/[-_]/g, '');
+    if (clean.endsWith('irt')) {
+      return { src: clean.slice(0, -3), dst: 'irt' };
+    }
+    if (clean.endsWith('rls')) {
+      return { src: clean.slice(0, -3), dst: 'rls' };
+    }
+    if (clean.endsWith('usdt')) {
+      return { src: clean.slice(0, -4), dst: 'usdt' };
+    }
+    return { src: clean, dst: 'rls' };
+  }
+
+  /**
    * Full Synchronizer:
    * 1. Pulls user's wallets from Nobitex
    * 2. Pulls real-time prices in Tomans (Rials / 10)
-   * 3. Pulls user's buy trades to compute average purchase price & PnL
+   * 3. Pulls user's trades & orders history to compute weighted average purchase prices & PnL
    * 4. Maps to CryptoAsset objects with accurate coin quantity, valuation and profit/loss
    */
   async syncUserCryptoHoldings(
@@ -237,55 +292,122 @@ class NobitexService {
   ): Promise<{
     updatedAssets: CryptoAsset[];
     syncedCount: number;
+    tradesCount: number;
     tomanBalance: number;
     profile?: NobitexProfile;
   }> {
-    // 1. Fetch Wallets, Profile & Trades in parallel (with graceful fallback)
-    const [wallets, profile, trades] = await Promise.all([
+    // 1. Fetch Wallets, Profile, Trades & Orders in parallel
+    const [wallets, profile, trades, orders] = await Promise.all([
       this.getWallets(config),
       this.getProfile(config).catch(() => undefined),
       this.getUserTrades(config).catch(() => []),
+      this.getUserOrders(config).catch(() => []),
     ]);
 
-    // 2. Compute Weighted Average Buy Price per symbol from trades
-    const avgBuyPriceMap = new Map<string, number>();
-    if (trades && Array.isArray(trades) && trades.length > 0) {
-      const buyTradesBySymbol: Record<string, { totalAmount: number; totalCostRials: number }> = {};
+    // 2. Fetch Market Prices for all coins
+    const stats = await this.getMarketStats(undefined, 'rls');
 
+    // Live Tether price in Tomans
+    const usdtPriceRials = stats['usdt-rls']?.latest ? parseFloat(stats['usdt-rls'].latest) : 930000;
+    const usdtPriceTomans = Math.round(usdtPriceRials / 10);
+
+    // 3. Compute Weighted Average Buy Price per symbol from trades & orders
+    const avgBuyPriceMap = new Map<string, number>();
+    const buyStatsBySymbol: Record<string, { totalAmount: number; totalCostTomans: number }> = {};
+
+    let totalParsedTrades = 0;
+
+    // 3.1 Process Trades
+    if (trades && Array.isArray(trades)) {
       for (const trade of trades) {
         const isBuy = trade.type === 'buy' || trade.side === 'buy';
         if (!isBuy) continue;
 
-        let sym = '';
+        let src = '';
+        let dst = 'rls';
+
         if (trade.srcCurrency) {
-          sym = trade.srcCurrency.toLowerCase();
+          src = trade.srcCurrency.toLowerCase().trim();
+          dst = (trade.dstCurrency || 'rls').toLowerCase().trim();
         } else if (trade.symbol) {
-          sym = trade.symbol.toLowerCase().replace('irt', '').replace('rls', '').replace('usdt', '');
+          const parsed = this.parsePairSymbol(trade.symbol);
+          src = parsed.src;
+          dst = parsed.dst;
         }
 
-        if (!sym) continue;
+        if (!src) continue;
 
         const amount = parseFloat(trade.amount || trade.matchedAmount || '0');
-        const price = parseFloat(trade.price || '0');
+        const rawPrice = parseFloat(trade.price || '0');
 
-        if (amount > 0 && price > 0) {
-          if (!buyTradesBySymbol[sym]) {
-            buyTradesBySymbol[sym] = { totalAmount: 0, totalCostRials: 0 };
+        if (amount > 0 && rawPrice > 0) {
+          let priceTomans = rawPrice;
+          if (dst === 'rls') {
+            priceTomans = rawPrice / 10;
+          } else if (dst === 'usdt') {
+            priceTomans = rawPrice * usdtPriceTomans;
           }
-          buyTradesBySymbol[sym].totalAmount += amount;
-          buyTradesBySymbol[sym].totalCostRials += amount * price;
-        }
-      }
 
-      for (const [sym, data] of Object.entries(buyTradesBySymbol)) {
-        if (data.totalAmount > 0) {
-          const avgPriceTomans = Math.round(data.totalCostRials / (data.totalAmount * 10));
-          avgBuyPriceMap.set(sym, avgPriceTomans);
+          if (!buyStatsBySymbol[src]) {
+            buyStatsBySymbol[src] = { totalAmount: 0, totalCostTomans: 0 };
+          }
+          buyStatsBySymbol[src].totalAmount += amount;
+          buyStatsBySymbol[src].totalCostTomans += amount * priceTomans;
+          totalParsedTrades++;
         }
       }
     }
 
-    // 3. Extract active crypto balances (exclude zero balances and rls)
+    // 3.2 Process Orders (as supplementary fallback if no direct trades)
+    if (orders && Array.isArray(orders)) {
+      for (const order of orders) {
+        const isBuy = order.type === 'buy' || order.side === 'buy';
+        const isExecuted = order.status === 'Done' || (parseFloat(order.matchedAmount || '0') > 0);
+        if (!isBuy || !isExecuted) continue;
+
+        let src = (order.srcCurrency || '').toLowerCase().trim();
+        let dst = (order.dstCurrency || 'rls').toLowerCase().trim();
+
+        if (!src && order.symbol) {
+          const parsed = this.parsePairSymbol(order.symbol);
+          src = parsed.src;
+          dst = parsed.dst;
+        }
+
+        if (!src) continue;
+
+        const matchedAmount = parseFloat(order.matchedAmount || order.amount || '0');
+        const rawPrice = parseFloat(order.averagePrice || order.price || '0');
+
+        if (matchedAmount > 0 && rawPrice > 0) {
+          let priceTomans = rawPrice;
+          if (dst === 'rls') {
+            priceTomans = rawPrice / 10;
+          } else if (dst === 'usdt') {
+            priceTomans = rawPrice * usdtPriceTomans;
+          }
+
+          if (!buyStatsBySymbol[src]) {
+            buyStatsBySymbol[src] = { totalAmount: 0, totalCostTomans: 0 };
+          }
+          buyStatsBySymbol[src].totalAmount += matchedAmount;
+          buyStatsBySymbol[src].totalCostTomans += matchedAmount * priceTomans;
+          totalParsedTrades++;
+        }
+      }
+    }
+
+    // Calculate final weighted averages
+    for (const [sym, data] of Object.entries(buyStatsBySymbol)) {
+      if (data.totalAmount > 0) {
+        const avgTomans = Math.round(data.totalCostTomans / data.totalAmount);
+        avgBuyPriceMap.set(sym, avgTomans);
+      }
+    }
+
+    console.log(`[NobitexService] Processed ${totalParsedTrades} buy records across ${avgBuyPriceMap.size} coins:`, Object.fromEntries(avgBuyPriceMap));
+
+    // 4. Extract active crypto balances (exclude zero balances and rls)
     const cryptoWallets = wallets.filter(
       (w) => w.currency.toLowerCase() !== 'rls' && parseFloat(w.balance || '0') > 0
     );
@@ -293,13 +415,6 @@ class NobitexService {
     // Extract Rials wallet (cash on exchange)
     const rlsWallet = wallets.find((w) => w.currency.toLowerCase() === 'rls');
     const tomanBalance = rlsWallet ? Math.round(parseFloat(rlsWallet.balance || '0') / 10) : 0;
-
-    // 4. Fetch Market Prices for all coins
-    const stats = await this.getMarketStats(undefined, 'rls');
-
-    // Tether price in Rials to convert any USDT-only rates if needed
-    const usdtPriceRials = stats['usdt-rls']?.latest ? parseFloat(stats['usdt-rls'].latest) : 900000;
-    const usdtPriceTomans = Math.round(usdtPriceRials / 10);
 
     // 5. Update or merge assets with PnL
     const updatedAssets: CryptoAsset[] = [];
@@ -325,7 +440,7 @@ class NobitexService {
       const holdingValue = unitPriceTomans > 0 ? Math.round(coinAmount * unitPriceTomans) : asset.currentHoldingValue;
 
       // Purchase Cost & PnL calculation
-      const avgBuyPrice = asset.averageBuyPrice || avgBuyPriceMap.get(sym) || 0;
+      const avgBuyPrice = avgBuyPriceMap.get(sym) || asset.averageBuyPrice || 0;
       const totalCost = avgBuyPrice > 0 && coinAmount > 0 ? Math.round(coinAmount * avgBuyPrice) : asset.totalCostTomans;
       const profitTomans = totalCost !== undefined && totalCost > 0 ? holdingValue - totalCost : undefined;
       const profitPercent = totalCost !== undefined && totalCost > 0 ? ((holdingValue - totalCost) / totalCost) * 100 : undefined;
@@ -390,6 +505,7 @@ class NobitexService {
     return {
       updatedAssets,
       syncedCount: cryptoWallets.length,
+      tradesCount: totalParsedTrades,
       tomanBalance,
       profile,
     };
