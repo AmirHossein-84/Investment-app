@@ -146,6 +146,54 @@ class NobitexService {
   }
 
   /**
+   * Fetch User Trades (History of executed buy/sell orders)
+   */
+  async getUserTrades(config: NobitexConfig): Promise<any[]> {
+    const base = this.getBaseUrl();
+    const path = '/market/trades/list';
+    const url = `${base}${path}`;
+
+    try {
+      const headers = await this.getRequestHeaders({
+        config,
+        method: 'GET',
+        path,
+        body: '',
+      });
+
+      const res = await fetch(url, {
+        method: 'GET',
+        headers,
+      });
+
+      if (!res.ok) {
+        // Fallback to POST
+        const postHeaders = await this.getRequestHeaders({
+          config,
+          method: 'POST',
+          path,
+          body: '',
+        });
+        const postRes = await fetch(url, {
+          method: 'POST',
+          headers: postHeaders,
+        });
+        if (postRes.ok) {
+          const postData = await postRes.json();
+          return postData.trades || [];
+        }
+        return [];
+      }
+
+      const data = await res.json();
+      return data.trades || [];
+    } catch (e) {
+      console.warn('[NobitexService] Could not fetch user trades:', e);
+      return [];
+    }
+  }
+
+  /**
    * Fetch Market Stats (Latest Prices in Rials/Tomans for all pairs)
    */
   async getMarketStats(
@@ -180,7 +228,8 @@ class NobitexService {
    * Full Synchronizer:
    * 1. Pulls user's wallets from Nobitex
    * 2. Pulls real-time prices in Tomans (Rials / 10)
-   * 3. Maps to CryptoAsset objects with accurate coin quantity and Tomans valuation
+   * 3. Pulls user's buy trades to compute average purchase price & PnL
+   * 4. Maps to CryptoAsset objects with accurate coin quantity, valuation and profit/loss
    */
   async syncUserCryptoHoldings(
     config: NobitexConfig,
@@ -191,13 +240,52 @@ class NobitexService {
     tomanBalance: number;
     profile?: NobitexProfile;
   }> {
-    // 1. Fetch Wallets & Profile in parallel (with graceful fallback for profile)
-    const [wallets, profile] = await Promise.all([
+    // 1. Fetch Wallets, Profile & Trades in parallel (with graceful fallback)
+    const [wallets, profile, trades] = await Promise.all([
       this.getWallets(config),
       this.getProfile(config).catch(() => undefined),
+      this.getUserTrades(config).catch(() => []),
     ]);
 
-    // 2. Extract active crypto balances (exclude zero balances and rls)
+    // 2. Compute Weighted Average Buy Price per symbol from trades
+    const avgBuyPriceMap = new Map<string, number>();
+    if (trades && Array.isArray(trades) && trades.length > 0) {
+      const buyTradesBySymbol: Record<string, { totalAmount: number; totalCostRials: number }> = {};
+
+      for (const trade of trades) {
+        const isBuy = trade.type === 'buy' || trade.side === 'buy';
+        if (!isBuy) continue;
+
+        let sym = '';
+        if (trade.srcCurrency) {
+          sym = trade.srcCurrency.toLowerCase();
+        } else if (trade.symbol) {
+          sym = trade.symbol.toLowerCase().replace('irt', '').replace('rls', '').replace('usdt', '');
+        }
+
+        if (!sym) continue;
+
+        const amount = parseFloat(trade.amount || trade.matchedAmount || '0');
+        const price = parseFloat(trade.price || '0');
+
+        if (amount > 0 && price > 0) {
+          if (!buyTradesBySymbol[sym]) {
+            buyTradesBySymbol[sym] = { totalAmount: 0, totalCostRials: 0 };
+          }
+          buyTradesBySymbol[sym].totalAmount += amount;
+          buyTradesBySymbol[sym].totalCostRials += amount * price;
+        }
+      }
+
+      for (const [sym, data] of Object.entries(buyTradesBySymbol)) {
+        if (data.totalAmount > 0) {
+          const avgPriceTomans = Math.round(data.totalCostRials / (data.totalAmount * 10));
+          avgBuyPriceMap.set(sym, avgPriceTomans);
+        }
+      }
+    }
+
+    // 3. Extract active crypto balances (exclude zero balances and rls)
     const cryptoWallets = wallets.filter(
       (w) => w.currency.toLowerCase() !== 'rls' && parseFloat(w.balance || '0') > 0
     );
@@ -206,14 +294,14 @@ class NobitexService {
     const rlsWallet = wallets.find((w) => w.currency.toLowerCase() === 'rls');
     const tomanBalance = rlsWallet ? Math.round(parseFloat(rlsWallet.balance || '0') / 10) : 0;
 
-    // 3. Fetch Market Prices for all coins
+    // 4. Fetch Market Prices for all coins
     const stats = await this.getMarketStats(undefined, 'rls');
 
     // Tether price in Rials to convert any USDT-only rates if needed
     const usdtPriceRials = stats['usdt-rls']?.latest ? parseFloat(stats['usdt-rls'].latest) : 900000;
     const usdtPriceTomans = Math.round(usdtPriceRials / 10);
 
-    // 4. Update or merge assets
+    // 5. Update or merge assets with PnL
     const updatedAssets: CryptoAsset[] = [];
     const processedSymbols = new Set<string>();
 
@@ -236,11 +324,21 @@ class NobitexService {
       const coinAmount = wallet ? parseFloat(wallet.balance) : asset.currentAmount || 0;
       const holdingValue = unitPriceTomans > 0 ? Math.round(coinAmount * unitPriceTomans) : asset.currentHoldingValue;
 
+      // Purchase Cost & PnL calculation
+      const avgBuyPrice = asset.averageBuyPrice || avgBuyPriceMap.get(sym) || 0;
+      const totalCost = avgBuyPrice > 0 && coinAmount > 0 ? Math.round(coinAmount * avgBuyPrice) : asset.totalCostTomans;
+      const profitTomans = totalCost !== undefined && totalCost > 0 ? holdingValue - totalCost : undefined;
+      const profitPercent = totalCost !== undefined && totalCost > 0 ? ((holdingValue - totalCost) / totalCost) * 100 : undefined;
+
       updatedAssets.push({
         ...asset,
         currentAmount: coinAmount,
         unitPrice: unitPriceTomans,
         currentHoldingValue: holdingValue,
+        averageBuyPrice: avgBuyPrice > 0 ? avgBuyPrice : undefined,
+        totalCostTomans: totalCost,
+        profitTomans,
+        profitPercent,
       });
     }
 
@@ -268,6 +366,11 @@ class NobitexService {
         targetPercent: 10,
       };
 
+      const avgBuyPrice = avgBuyPriceMap.get(sym) || 0;
+      const totalCost = avgBuyPrice > 0 && coinAmount > 0 ? Math.round(coinAmount * avgBuyPrice) : undefined;
+      const profitTomans = totalCost !== undefined && totalCost > 0 ? holdingValue - totalCost : undefined;
+      const profitPercent = totalCost !== undefined && totalCost > 0 ? ((holdingValue - totalCost) / totalCost) * 100 : undefined;
+
       updatedAssets.push({
         id: `nobitex_${sym}_${Date.now()}`,
         symbol: sym.toUpperCase(),
@@ -276,6 +379,10 @@ class NobitexService {
         currentAmount: coinAmount,
         unitPrice: unitPriceTomans,
         currentHoldingValue: holdingValue,
+        averageBuyPrice: avgBuyPrice > 0 ? avgBuyPrice : undefined,
+        totalCostTomans: totalCost,
+        profitTomans,
+        profitPercent,
         color: meta.color,
       });
     }

@@ -10,6 +10,10 @@ export interface CryptoAsset {
   currentHoldingValue: number; // in Tomans
   currentAmount?: number; // coin amount (optional)
   unitPrice?: number; // unit price in Tomans (optional)
+  averageBuyPrice?: number; // average purchase price in Tomans (optional)
+  totalCostTomans?: number; // total purchase cost in Tomans (optional)
+  profitTomans?: number; // net profit/loss amount in Tomans (optional)
+  profitPercent?: number; // net profit/loss percentage (optional)
   color: string;
   isDefault?: boolean;
 }

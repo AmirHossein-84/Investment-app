@@ -12,6 +12,7 @@ import {
   Sliders,
   DollarSign,
   Activity,
+  ShieldCheck,
 } from 'lucide-react';
 import { CryptoAsset } from '../../types/investment';
 import { useNobitex } from '../../hooks/useNobitex';
@@ -87,10 +88,16 @@ export const CryptoMarketView: React.FC<CryptoMarketViewProps> = ({
               ? Math.round(asset.currentAmount * priceTomans)
               : asset.currentHoldingValue;
 
+          const totalCost = asset.totalCostTomans || (asset.averageBuyPrice && asset.currentAmount ? Math.round(asset.currentAmount * asset.averageBuyPrice) : undefined);
+          const profitTomans = totalCost !== undefined && totalCost > 0 ? holdingVal - totalCost : undefined;
+          const profitPercent = totalCost !== undefined && totalCost > 0 ? ((holdingVal - totalCost) / totalCost) * 100 : undefined;
+
           return {
             ...asset,
             unitPrice: priceTomans,
             currentHoldingValue: holdingVal,
+            profitTomans,
+            profitPercent,
           };
         }
         return asset;
@@ -116,13 +123,33 @@ export const CryptoMarketView: React.FC<CryptoMarketViewProps> = ({
     if (isConfigured) {
       await syncWithNobitex(cryptoAssets, onAssetsUpdated);
     }
-    onNotify?.('قیمت‌های بازار رمزارز به‌روزرسانی شدند', 'success');
+    onNotify?.('قیمت‌های بازار و سوابق معاملات رمزارز به‌روزرسانی شدند', 'success');
   };
 
   const totalCryptoValue = cryptoAssets.reduce(
     (sum, a) => sum + (a.currentHoldingValue || 0),
     0
   );
+
+  // User's owned active crypto assets
+  const userOwnedAssets = cryptoAssets.filter(
+    (a) => (a.currentHoldingValue || 0) > 0 || (a.currentAmount || 0) > 0
+  );
+
+  // Compute Total Cost & Profit across owned crypto
+  const totalCryptoCost = userOwnedAssets.reduce((sum, a) => {
+    if (a.totalCostTomans !== undefined && a.totalCostTomans > 0) {
+      return sum + a.totalCostTomans;
+    }
+    if (a.averageBuyPrice && a.currentAmount) {
+      return sum + Math.round(a.currentAmount * a.averageBuyPrice);
+    }
+    return sum;
+  }, 0);
+
+  const hasCostData = totalCryptoCost > 0;
+  const totalCryptoProfitTomans = hasCostData ? totalCryptoValue - totalCryptoCost : undefined;
+  const totalCryptoProfitPercent = hasCostData ? (totalCryptoProfitTomans! / totalCryptoCost) * 100 : undefined;
 
   // Build Donut Items from user owned crypto assets
   const donutItems: DonutChartItem[] = cryptoAssets
@@ -156,7 +183,154 @@ export const CryptoMarketView: React.FC<CryptoMarketViewProps> = ({
         onNotify={onNotify}
       />
 
-      {/* 2. CRYPTO PORTFOLIO DONUT CHART */}
+      {/* 2. PORTFOLIO P&L SUMMARY BAR */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+        <div className="p-3.5 rounded-2xl bg-slate-950/80 border border-slate-800/80 space-y-1">
+          <span className="text-[10px] text-slate-400 font-medium block">
+            ارزش کل دارایی‌های کریپتو
+          </span>
+          <div className="text-sm sm:text-base font-black text-indigo-400 dir-ltr text-right">
+            {formatCurrency(totalCryptoValue)}
+          </div>
+        </div>
+
+        <div className="p-3.5 rounded-2xl bg-slate-950/80 border border-slate-800/80 space-y-1">
+          <span className="text-[10px] text-slate-400 font-medium block">
+            سود / زیان کل کریپتو
+          </span>
+          {totalCryptoProfitTomans !== undefined ? (
+            <div
+              className={`text-sm sm:text-base font-black flex items-center gap-1 dir-ltr text-right ${
+                totalCryptoProfitTomans >= 0 ? 'text-emerald-400' : 'text-rose-400'
+              }`}
+            >
+              <span>{totalCryptoProfitTomans >= 0 ? '+' : ''}{formatCurrency(totalCryptoProfitTomans)}</span>
+              <span className="text-[10px] font-bold">
+                ({totalCryptoProfitPercent !== undefined ? formatPercent(totalCryptoProfitPercent) : '0%'})
+              </span>
+            </div>
+          ) : (
+            <span className="text-xs text-slate-500 font-medium block">در انتظار سوابق خرید</span>
+          )}
+        </div>
+
+        <div className="p-3.5 rounded-2xl bg-slate-950/80 border border-slate-800/80 space-y-1 col-span-2 sm:col-span-1">
+          <span className="text-[10px] text-slate-400 font-medium block">
+            موجودی نقد نوبیتکس
+          </span>
+          <div className="text-sm sm:text-base font-black text-emerald-400 dir-ltr text-right">
+            {formatCurrency(tomanCashBalance)}
+          </div>
+        </div>
+      </div>
+
+      {/* 3. USER OWNED CRYPTO HOLDINGS WITH PROFIT / LOSS */}
+      {userOwnedAssets.length > 0 && (
+        <div className="glass-card p-4 sm:p-5 border border-indigo-500/30 shadow-xl space-y-3.5">
+          <div className="flex items-center justify-between border-b border-slate-800/80 pb-2.5">
+            <div className="flex items-center gap-2">
+              <span className="w-2.5 h-2.5 rounded-full bg-indigo-500" />
+              <h3 className="text-sm font-black text-slate-100">
+                موجودی و سود/زیان دارایی‌های شما
+              </h3>
+            </div>
+            <span className="text-xs font-black text-indigo-300 dir-ltr">
+              {toPersianDigits(userOwnedAssets.length)} ارز در سبد
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+            {userOwnedAssets.map((asset) => {
+              const profitPct = asset.profitPercent;
+              const profitVal = asset.profitTomans;
+              const hasProfit = profitPct !== undefined && profitVal !== undefined;
+              const isProfitPositive = (profitPct || 0) >= 0;
+
+              return (
+                <div
+                  key={asset.id}
+                  className="p-3.5 rounded-2xl bg-slate-900/90 border border-slate-800/90 space-y-2.5"
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <span
+                        className="w-4 h-4 rounded-full shrink-0 shadow-sm"
+                        style={{ backgroundColor: asset.color }}
+                      />
+                      <div>
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-black text-slate-100 text-sm">{asset.symbol}</span>
+                          <span className="text-[10px] px-1.5 py-0.2 rounded-md bg-slate-950 border border-slate-700 text-slate-400 font-bold">
+                            وزن: {toPersianDigits(asset.targetPercent)}%
+                          </span>
+                        </div>
+                        <span className="text-[11px] text-slate-400 block truncate mt-0.5">
+                          {asset.currentAmount !== undefined && asset.currentAmount > 0
+                            ? `${toPersianDigits(asset.currentAmount.toFixed(4))} ${asset.symbol}`
+                            : asset.name}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Profit/Loss Badge */}
+                    {hasProfit && (
+                      <span
+                        className={`text-[10px] font-black px-2 py-0.5 rounded-md inline-flex items-center gap-0.5 dir-ltr shrink-0 ${
+                          isProfitPositive
+                            ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30'
+                            : 'bg-rose-500/15 text-rose-400 border border-rose-500/30'
+                        }`}
+                      >
+                        {isProfitPositive ? (
+                          <ArrowUpRight className="w-3 h-3" />
+                        ) : (
+                          <ArrowDownRight className="w-3 h-3" />
+                        )}
+                        <span>{isProfitPositive ? '+' : ''}{formatPercent(profitPct, 1)}</span>
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Pricing & Valuation Details */}
+                  <div className="p-2.5 rounded-xl bg-slate-950/90 border border-slate-800/80 flex items-center justify-between text-xs">
+                    <div>
+                      <span className="text-[10px] text-slate-400 block">ارزش فعلی:</span>
+                      <span className="font-black text-indigo-300 dir-ltr text-right block">
+                        {formatCurrency(asset.currentHoldingValue, { isTomanSuffix: true })}
+                      </span>
+                    </div>
+
+                    <div className="text-left">
+                      <span className="text-[10px] text-slate-400 block">
+                        {asset.averageBuyPrice ? 'میانگین خرید:' : 'نرخ روز:'}
+                      </span>
+                      <span className="text-xs font-bold text-slate-200 dir-ltr text-right block">
+                        {asset.averageBuyPrice
+                          ? formatCurrency(asset.averageBuyPrice, { isUnitPrice: true, isTomanSuffix: true })
+                          : asset.unitPrice
+                          ? formatCurrency(asset.unitPrice, { isUnitPrice: true, isTomanSuffix: true })
+                          : '—'}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Net Profit amount */}
+                  {hasProfit && (
+                    <div className="flex items-center justify-between text-[11px] pt-0.5">
+                      <span className="text-slate-400">سود / زیان خالص:</span>
+                      <span className={`font-bold dir-ltr ${isProfitPositive ? 'text-emerald-400' : 'text-rose-400'}`}>
+                        {isProfitPositive ? '+' : ''}{formatCurrency(profitVal, { isTomanSuffix: true })}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* 4. CRYPTO PORTFOLIO DONUT CHART */}
       {donutItems.length > 0 && (
         <div className="p-5 rounded-3xl bg-slate-900/80 border border-indigo-500/30 shadow-xl space-y-4">
           <div className="flex items-center justify-between">
@@ -183,7 +357,7 @@ export const CryptoMarketView: React.FC<CryptoMarketViewProps> = ({
         </div>
       )}
 
-      {/* 3. LIVE MARKET TICKERS & WATCHLIST */}
+      {/* 5. LIVE MARKET TICKERS & WATCHLIST */}
       <div className="space-y-3">
         
         {/* Search & Filter */}

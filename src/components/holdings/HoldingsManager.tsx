@@ -8,7 +8,7 @@ import {
 } from 'lucide-react';
 import { CryptoAsset, PhysicalGoldItem, PhysicalGoldType } from '../../types/investment';
 import { useMarketData } from '../../hooks/useMarketData';
-import { formatToman, toPersianDigits } from '../../utils/formatters';
+import { formatToman, formatPercent, toPersianDigits } from '../../utils/formatters';
 import { triggerHaptic } from '../../utils/haptics';
 import { AddAssetModal } from './AddAssetModal';
 import { EditAssetModal } from './EditAssetModal';
@@ -255,7 +255,16 @@ export const HoldingsManager: React.FC<HoldingsManagerProps> = ({
                       ? formatCurrency(asset.currentHoldingValue, { isTomanSuffix: true })
                       : '0'}
                   </div>
-                  {asset.unitPrice !== undefined && asset.unitPrice > 0 && (
+                  {asset.profitPercent !== undefined && (
+                    <div
+                      className={`text-[10px] font-bold dir-ltr text-right ${
+                        asset.profitPercent >= 0 ? 'text-emerald-400' : 'text-rose-400'
+                      }`}
+                    >
+                      {asset.profitPercent >= 0 ? '+' : ''}{formatPercent(asset.profitPercent, 1)}
+                    </div>
+                  )}
+                  {asset.unitPrice !== undefined && asset.unitPrice > 0 && asset.profitPercent === undefined && (
                     <div className="text-[10px] text-slate-500 dir-ltr text-right">
                       نرخ: {formatCurrency(asset.unitPrice, { isUnitPrice: true, isTomanSuffix: true })}
                     </div>

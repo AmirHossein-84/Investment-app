@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { X, Trash2 } from 'lucide-react';
+import { X, Trash2, TrendingUp } from 'lucide-react';
 import { CryptoAsset } from '../../types/investment';
-import { parseNumberInput } from '../../utils/formatters';
+import { parseNumberInput, formatToman } from '../../utils/formatters';
 import { triggerHaptic } from '../../utils/haptics';
 
 interface EditAssetModalProps {
@@ -22,6 +22,7 @@ export const EditAssetModal: React.FC<EditAssetModalProps> = ({
   const [name, setName] = useState('');
   const [targetPercent, setTargetPercent] = useState('0');
   const [currentHoldingValue, setCurrentHoldingValue] = useState('');
+  const [averageBuyPrice, setAverageBuyPrice] = useState('');
 
   useEffect(() => {
     if (asset) {
@@ -29,6 +30,11 @@ export const EditAssetModal: React.FC<EditAssetModalProps> = ({
       setTargetPercent(String(asset.targetPercent));
       setCurrentHoldingValue(
         asset.currentHoldingValue > 0 ? String(asset.currentHoldingValue) : ''
+      );
+      setAverageBuyPrice(
+        asset.averageBuyPrice && asset.averageBuyPrice > 0
+          ? String(asset.averageBuyPrice)
+          : ''
       );
     }
   }, [asset]);
@@ -38,10 +44,22 @@ export const EditAssetModal: React.FC<EditAssetModalProps> = ({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     triggerHaptic('success');
+
+    const holdingVal = parseNumberInput(currentHoldingValue);
+    const avgBuy = parseNumberInput(averageBuyPrice);
+    const coinAmount = asset.currentAmount || (asset.unitPrice && asset.unitPrice > 0 ? holdingVal / asset.unitPrice : 0);
+    const totalCost = avgBuy > 0 && coinAmount > 0 ? Math.round(coinAmount * avgBuy) : (avgBuy > 0 ? avgBuy : undefined);
+    const profitTomans = totalCost !== undefined && totalCost > 0 ? holdingVal - totalCost : undefined;
+    const profitPercent = totalCost !== undefined && totalCost > 0 ? ((holdingVal - totalCost) / totalCost) * 100 : undefined;
+
     onSave(asset.id, {
       name: name.trim() || asset.symbol,
       targetPercent: parseFloat(targetPercent) || 0,
-      currentHoldingValue: parseNumberInput(currentHoldingValue),
+      currentHoldingValue: holdingVal,
+      averageBuyPrice: avgBuy > 0 ? avgBuy : undefined,
+      totalCostTomans: totalCost,
+      profitTomans,
+      profitPercent,
     });
     onClose();
   };
@@ -124,6 +142,25 @@ export const EditAssetModal: React.FC<EditAssetModalProps> = ({
                 className="w-full bg-slate-950 border border-slate-700/80 rounded-2xl px-4 py-3 text-slate-100 dir-ltr font-bold text-sm"
               />
             </div>
+          </div>
+
+          {/* Average Purchase Price (Optional for Manual P&L) */}
+          <div>
+            <label className="block text-slate-300 font-bold mb-1.5">
+              میانگین قیمت خرید به تومان (اختیاری — جهت محاسبه سود/زیان)
+            </label>
+            <input
+              type="text"
+              placeholder="مثال: ۴,۲۰۰,۰۰۰,۰۰۰"
+              value={averageBuyPrice}
+              onChange={(e) => setAverageBuyPrice(e.target.value)}
+              className="w-full bg-slate-950 border border-slate-700/80 rounded-2xl px-4 py-3 text-slate-100 dir-ltr font-bold text-sm"
+            />
+            {asset.unitPrice && asset.unitPrice > 0 && (
+              <span className="text-[10px] text-slate-400 block mt-1">
+                نرخ فعلی بازار: {formatToman(asset.unitPrice)} تومان
+              </span>
+            )}
           </div>
 
           {/* Action buttons */}
