@@ -147,7 +147,7 @@ jobs:
           elif [[ "${{ github.ref }}" == refs/tags/v* ]]; then
             TAG="${{ github.ref_name }}"
           else
-            TAG="preview-v1.0.${{ github.run_number }}"
+            TAG="v1.0.${{ github.run_number }}"
           fi
           echo "tag=$TAG" >> $GITHUB_OUTPUT
 
@@ -175,7 +175,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tag_name: ${{ steps.get_version.outputs.tag }}
-          name: "🔍 پیش‌نمایش نسخه ${{ steps.get_version.outputs.tag }} (Android APK & iOS IPA)"
+          name: "🔍 Investment App ${{ steps.get_version.outputs.tag }} (Android APK & iOS IPA)"
           draft: true
           prerelease: true
           make_latest: false
