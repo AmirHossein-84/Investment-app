@@ -241,7 +241,34 @@ export const CryptoMarketView: React.FC<CryptoMarketViewProps> = ({
           </div>
         </div>
 
-        {/* 3. USER OWNED CRYPTO HOLDINGS WITH PROFIT / LOSS */}
+        {/* 3. CRYPTO PORTFOLIO DONUT CHART (Above Holdings) */}
+        {donutItems.length > 0 && (
+          <div className="p-5 rounded-3xl bg-slate-900/80 border border-indigo-500/30 shadow-xl space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-xl bg-indigo-500/20 text-indigo-400 flex items-center justify-center font-bold text-sm">
+                  <Coins className="w-4 h-4" />
+                </div>
+                <h3 className="text-sm font-black text-slate-100">
+                  ترکیب دارایی‌های کریپتو
+                </h3>
+              </div>
+              <span className="text-xs font-black text-indigo-400 dir-ltr">
+                مجموع: {formatCurrency(totalCryptoValue, { isTomanSuffix: true })}
+              </span>
+            </div>
+
+            <PortfolioDonutChart
+              items={donutItems}
+              centerTitle="مجموع رمزارزها"
+              centerSubtitle={formatCurrency(totalCryptoValue, true)}
+              size={200}
+              strokeWidth={22}
+            />
+          </div>
+        )}
+
+        {/* 4. USER OWNED CRYPTO HOLDINGS WITH PROFIT / LOSS */}
         {userOwnedAssets.length > 0 && (
           <div className="glass-card p-4 sm:p-5 border border-indigo-500/30 shadow-xl space-y-3.5">
             <div className="flex items-center justify-between border-b border-slate-800/80 pb-2.5">
@@ -352,33 +379,6 @@ export const CryptoMarketView: React.FC<CryptoMarketViewProps> = ({
                 );
               })}
             </div>
-          </div>
-        )}
-
-        {/* 4. CRYPTO PORTFOLIO DONUT CHART */}
-        {donutItems.length > 0 && (
-          <div className="p-5 rounded-3xl bg-slate-900/80 border border-indigo-500/30 shadow-xl space-y-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-xl bg-indigo-500/20 text-indigo-400 flex items-center justify-center font-bold text-sm">
-                  <Coins className="w-4 h-4" />
-                </div>
-                <h3 className="text-sm font-black text-slate-100">
-                  ترکیب دارایی‌های کریپتو
-                </h3>
-              </div>
-              <span className="text-xs font-black text-indigo-400 dir-ltr">
-                مجموع: {formatCurrency(totalCryptoValue, { isTomanSuffix: true })}
-              </span>
-            </div>
-
-            <PortfolioDonutChart
-              items={donutItems}
-              centerTitle="مجموع رمزارزها"
-              centerSubtitle={formatCurrency(totalCryptoValue, true)}
-              size={200}
-              strokeWidth={22}
-            />
           </div>
         )}
 

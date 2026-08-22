@@ -93,6 +93,30 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const cryptoPercentActual = totalPortfolioValue > 0 ? (totalCryptoValue / totalPortfolioValue) * 100 : 0;
   const cashPercentActual = totalPortfolioValue > 0 ? (tomanCashBalance / totalPortfolioValue) * 100 : 0;
 
+  // Calculate Total Crypto Profit / Loss from cryptoAssets
+  let totalCryptoCostTomans = 0;
+  let hasCryptoCostData = false;
+
+  for (const asset of cryptoAssets) {
+    if (asset.currentAmount && asset.currentAmount > 0) {
+      if (asset.totalCostTomans !== undefined && asset.totalCostTomans > 0) {
+        totalCryptoCostTomans += asset.totalCostTomans;
+        hasCryptoCostData = true;
+      } else if (asset.averageBuyPrice && asset.averageBuyPrice > 0) {
+        totalCryptoCostTomans += asset.currentAmount * asset.averageBuyPrice;
+        hasCryptoCostData = true;
+      }
+    }
+  }
+
+  const totalCryptoProfitTomans = hasCryptoCostData && totalCryptoCostTomans > 0
+    ? totalCryptoValue - totalCryptoCostTomans
+    : undefined;
+
+  const totalCryptoProfitPercent = hasCryptoCostData && totalCryptoCostTomans > 0 && totalCryptoProfitTomans !== undefined
+    ? (totalCryptoProfitTomans / totalCryptoCostTomans) * 100
+    : undefined;
+
   // Donut chart items: Distinct radiant gold for physical, rich amber gold for bourse
   const chartItems: DonutChartItem[] = [];
 
@@ -309,9 +333,36 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               </span>
               <span className="text-indigo-300 font-bold">{formatPercent(cryptoPercentActual)}</span>
             </div>
-            <div className="text-sm font-black text-slate-100 dir-ltr text-right">
-              {formatCurrency(totalCryptoValue)}
+            <div className="flex items-baseline justify-between gap-1">
+              <div className="text-sm font-black text-slate-100 dir-ltr text-right">
+                {formatCurrency(totalCryptoValue)}
+              </div>
+              {totalCryptoProfitTomans !== undefined && (
+                <span
+                  className={`text-[10px] font-black px-1.5 py-0.5 rounded-md dir-ltr inline-flex items-center gap-0.5 ${
+                    totalCryptoProfitTomans >= 0
+                      ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30'
+                      : 'bg-rose-500/15 text-rose-400 border border-rose-500/30'
+                  }`}
+                >
+                  {totalCryptoProfitTomans >= 0 ? '+' : ''}
+                  {totalCryptoProfitPercent !== undefined ? formatPercent(totalCryptoProfitPercent, 1) : ''}
+                </span>
+              )}
             </div>
+            {totalCryptoProfitTomans !== undefined && (
+              <div className="flex items-center justify-between text-[10px] pt-1 border-t border-slate-800/80">
+                <span className="text-slate-400">سود/زیان خالص:</span>
+                <span
+                  className={`font-bold dir-ltr ${
+                    totalCryptoProfitTomans >= 0 ? 'text-emerald-400' : 'text-rose-400'
+                  }`}
+                >
+                  {totalCryptoProfitTomans >= 0 ? '+' : ''}
+                  {formatCurrency(totalCryptoProfitTomans)}
+                </span>
+              </div>
+            )}
           </div>
 
           {/* Nobitex Cash Chip */}
@@ -438,10 +489,25 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
           {/* Crypto Buy Cards */}
           <div className="space-y-2.5">
-            <h4 className="text-xs font-bold text-slate-300 flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-indigo-500" />
-              <span>ارزهای دیجیتال پیشنهادی برای خرید:</span>
-            </h4>
+            <div className="flex items-center justify-between">
+              <h4 className="text-xs font-bold text-slate-300 flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-indigo-500" />
+                <span>ارزهای دیجیتال پیشنهادی برای خرید:</span>
+              </h4>
+              {totalCryptoProfitTomans !== undefined && (
+                <span
+                  className={`text-[10px] font-black px-2 py-0.5 rounded-lg dir-ltr inline-flex items-center gap-1 ${
+                    totalCryptoProfitTomans >= 0
+                      ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30'
+                      : 'bg-rose-500/15 text-rose-400 border border-rose-500/30'
+                  }`}
+                >
+                  <span>سود کل کریپتو:</span>
+                  <span>{totalCryptoProfitTomans >= 0 ? '+' : ''}{formatCurrency(totalCryptoProfitTomans)}</span>
+                  <span>({totalCryptoProfitPercent !== undefined ? formatPercent(totalCryptoProfitPercent, 1) : '0%'})</span>
+                </span>
+              )}
+            </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {calculationResult.cryptoBuys.map((buy) => {
