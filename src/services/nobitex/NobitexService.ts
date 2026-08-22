@@ -3,6 +3,55 @@ import { CryptoAsset } from '../../types/investment';
 import { NobitexWallet, NobitexMarketStat, NobitexProfile, NobitexConfig } from './types';
 import { signNobitexRequest } from './nobitexSigner';
 
+// Normalize Nobitex English currency names to standard tickers
+const NOBITEX_NAME_TO_SYMBOL: Record<string, string> = {
+  bitcoin: 'btc',
+  btc: 'btc',
+  ethereum: 'eth',
+  eth: 'eth',
+  tether: 'usdt',
+  usdt: 'usdt',
+  solana: 'sol',
+  sol: 'sol',
+  ripple: 'xrp',
+  xrp: 'xrp',
+  binancecoin: 'bnb',
+  bnb: 'bnb',
+  cardano: 'ada',
+  ada: 'ada',
+  dogecoin: 'doge',
+  doge: 'doge',
+  tron: 'trx',
+  trx: 'trx',
+  polkadot: 'dot',
+  dot: 'dot',
+  polygon: 'pol',
+  pol: 'pol',
+  matic: 'pol',
+  avalanche: 'avax',
+  avax: 'avax',
+  chainlink: 'link',
+  link: 'link',
+  near: 'near',
+  sui: 'sui',
+  aptos: 'apt',
+  apt: 'apt',
+  notcoin: 'not',
+  not: 'not',
+  toncoin: 'ton',
+  ton: 'ton',
+  shiba: 'shib',
+  'shiba inu': 'shib',
+  shib: 'shib',
+  litecoin: 'ltc',
+  ltc: 'ltc',
+  uniswap: 'uni',
+  uni: 'uni',
+  fantom: 'ftm',
+  ftm: 'ftm',
+  dai: 'dai',
+};
+
 // Map popular symbols to Persian labels and colors
 const COIN_METADATA: Record<string, { name: string; color: string; targetPercent: number }> = {
   btc: { name: 'بیت‌کوین', color: '#F7931A', targetPercent: 25 },
@@ -22,6 +71,8 @@ const COIN_METADATA: Record<string, { name: string; color: string; targetPercent
   apt: { name: 'آپتوس', color: '#2EE5AC', targetPercent: 10 },
   usdt: { name: 'تتر', color: '#26A17B', targetPercent: 10 },
   not: { name: 'نات‌کوین', color: '#EAB308', targetPercent: 10 },
+  ton: { name: 'تون‌کوین', color: '#0088CC', targetPercent: 10 },
+  shib: { name: 'شیبا اینو', color: '#FFA409', targetPercent: 10 },
 };
 
 class NobitexService {
@@ -151,45 +202,44 @@ class NobitexService {
    */
   async getUserTrades(config: NobitexConfig): Promise<any[]> {
     const base = this.getBaseUrl();
-    const path = '/market/trades/list?pageSize=500';
-    const url = `${base}${path}`;
+    const pathWithQuery = '/market/trades/list?pageSize=500';
 
     try {
       const headers = await this.getRequestHeaders({
         config,
         method: 'GET',
-        path,
+        path: pathWithQuery,
         body: '',
       });
 
-      const res = await fetch(url, {
+      const res = await fetch(`${base}${pathWithQuery}`, {
         method: 'GET',
         headers,
       });
 
-      if (!res.ok) {
-        // Fallback without query params in path
-        const fallbackPath = '/market/trades/list';
-        const fallbackHeaders = await this.getRequestHeaders({
-          config,
-          method: 'GET',
-          path: fallbackPath,
-          body: '',
-        });
-        const fallbackRes = await fetch(`${base}${fallbackPath}`, {
-          method: 'GET',
-          headers: fallbackHeaders,
-        });
-
-        if (fallbackRes.ok) {
-          const fallbackData = await fallbackRes.json();
-          return fallbackData.trades || [];
-        }
-        return [];
+      if (res.ok) {
+        const data = await res.json();
+        return data.trades || data.data || (Array.isArray(data) ? data : []);
       }
 
-      const data = await res.json();
-      return data.trades || [];
+      // Fallback: without query string
+      const fallbackPath = '/market/trades/list';
+      const fallbackHeaders = await this.getRequestHeaders({
+        config,
+        method: 'GET',
+        path: fallbackPath,
+        body: '',
+      });
+      const fallbackRes = await fetch(`${base}${fallbackPath}`, {
+        method: 'GET',
+        headers: fallbackHeaders,
+      });
+
+      if (fallbackRes.ok) {
+        const fallbackData = await fallbackRes.json();
+        return fallbackData.trades || fallbackData.data || (Array.isArray(fallbackData) ? fallbackData : []);
+      }
+      return [];
     } catch (e) {
       console.warn('[NobitexService] Could not fetch user trades:', e);
       return [];
@@ -202,31 +252,88 @@ class NobitexService {
    */
   async getUserOrders(config: NobitexConfig): Promise<any[]> {
     const base = this.getBaseUrl();
-    const path = '/market/orders/list?status=all';
-    const url = `${base}${path}`;
+    const pathWithQuery = '/market/orders/list?status=all';
 
     try {
       const headers = await this.getRequestHeaders({
         config,
         method: 'GET',
-        path,
+        path: pathWithQuery,
         body: '',
       });
 
-      const res = await fetch(url, {
+      const res = await fetch(`${base}${pathWithQuery}`, {
         method: 'GET',
         headers,
       });
 
       if (res.ok) {
         const data = await res.json();
-        return data.orders || [];
+        return data.orders || data.data || (Array.isArray(data) ? data : []);
+      }
+
+      // Fallback: without query string
+      const fallbackPath = '/market/orders/list';
+      const fallbackHeaders = await this.getRequestHeaders({
+        config,
+        method: 'GET',
+        path: fallbackPath,
+        body: '',
+      });
+      const fallbackRes = await fetch(`${base}${fallbackPath}`, {
+        method: 'GET',
+        headers: fallbackHeaders,
+      });
+
+      if (fallbackRes.ok) {
+        const fallbackData = await fallbackRes.json();
+        return fallbackData.orders || fallbackData.data || (Array.isArray(fallbackData) ? fallbackData : []);
       }
       return [];
     } catch (e) {
       console.warn('[NobitexService] Could not fetch user orders:', e);
       return [];
     }
+  }
+
+  /**
+   * Fetch Portfolio Overall Profit & Loss from Nobitex native portfolio API
+   * Official Doc: https://apidocs.nobitex.ir/portfolio/سود-و-زیان-کل-ماه-گذشته
+   */
+  async getPortfolioTotalProfit(config: NobitexConfig): Promise<{
+    totalProfitTomans?: number;
+    totalProfitPercent?: number;
+  } | null> {
+    try {
+      const base = this.getBaseUrl();
+      const path = '/users/portfolio/last-month-total-profit';
+      const headers = await this.getRequestHeaders({
+        config,
+        method: 'POST',
+        path,
+        body: '',
+      });
+
+      const res = await fetch(`${base}${path}`, {
+        method: 'POST',
+        headers,
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        if (data.status === 'ok' && data.data) {
+          const rawProfit = parseFloat(data.data.total_profit || '0');
+          const rawPct = parseFloat(data.data.total_profit_percentage || '0');
+          return {
+            totalProfitTomans: Math.round(rawProfit / 10), // Rials to Tomans
+            totalProfitPercent: rawPct,
+          };
+        }
+      }
+    } catch (e) {
+      console.warn('[NobitexService] Native portfolio total profit fetch failed:', e);
+    }
+    return null;
   }
 
   /**
@@ -237,7 +344,6 @@ class NobitexService {
     dstCurrency: 'rls' | 'usdt' = 'rls'
   ): Promise<Record<string, NobitexMarketStat>> {
     const base = this.getBaseUrl();
-    // Query without srcCurrency filter so Nobitex returns all 150+ valid pairs reliably
     const url = `${base}/market/stats?dstCurrency=${dstCurrency}`;
 
     const res = await fetch(url, {
@@ -261,22 +367,56 @@ class NobitexService {
   }
 
   /**
-   * Parse coin symbol from Nobitex trade or order
-   * e.g. "BTCIRT" -> { src: "btc", dst: "irt" }
-   * e.g. "ETHUSDT" -> { src: "eth", dst: "usdt" }
+   * Robust Market Symbol Parser
+   * Extracts clean source ticker ('btc', 'eth', 'usdt', etc.) and destination ('rls', 'usdt', 'irt')
    */
-  private parsePairSymbol(symbolStr: string): { src: string; dst: string } {
-    const clean = symbolStr.toLowerCase().trim().replace(/[-_]/g, '');
-    if (clean.endsWith('irt')) {
-      return { src: clean.slice(0, -3), dst: 'irt' };
+  private extractMarketSymbols(item: any): { src: string; dst: 'rls' | 'usdt' | 'irt' } {
+    // 1. From item.market (e.g. "BTC-RLS", "ETH-USDT", "USDT-RLS", "BTC_IRT")
+    if (item.market && typeof item.market === 'string') {
+      const parts = item.market.toLowerCase().split(/[-_]/);
+      if (parts.length >= 2) {
+        const rawSrc = parts[0];
+        const rawDst = parts[1];
+        const src = NOBITEX_NAME_TO_SYMBOL[rawSrc] || rawSrc;
+        let dst: 'rls' | 'usdt' | 'irt' = 'rls';
+        if (rawDst === 'usdt' || rawDst === 'tether') dst = 'usdt';
+        else if (rawDst === 'irt' || rawDst === 'toman') dst = 'irt';
+        return { src, dst };
+      }
     }
-    if (clean.endsWith('rls')) {
-      return { src: clean.slice(0, -3), dst: 'rls' };
+
+    // 2. From item.symbol (e.g. "BTCIRT", "BTCUSDT", "BTCRLS")
+    if (item.symbol && typeof item.symbol === 'string') {
+      const clean = item.symbol.toLowerCase().trim().replace(/[-_]/g, '');
+      if (clean.endsWith('irt')) {
+        const raw = clean.slice(0, -3);
+        return { src: NOBITEX_NAME_TO_SYMBOL[raw] || raw, dst: 'irt' };
+      }
+      if (clean.endsWith('usdt')) {
+        const raw = clean.slice(0, -4);
+        return { src: NOBITEX_NAME_TO_SYMBOL[raw] || raw, dst: 'usdt' };
+      }
+      if (clean.endsWith('rls')) {
+        const raw = clean.slice(0, -3);
+        return { src: NOBITEX_NAME_TO_SYMBOL[raw] || raw, dst: 'rls' };
+      }
     }
-    if (clean.endsWith('usdt')) {
-      return { src: clean.slice(0, -4), dst: 'usdt' };
+
+    // 3. From item.srcCurrency and item.dstCurrency
+    const rawSrc = (item.srcCurrency || '').toLowerCase().trim();
+    const rawDst = (item.dstCurrency || '').toLowerCase().trim();
+    const src = NOBITEX_NAME_TO_SYMBOL[rawSrc] || rawSrc;
+
+    let dst: 'rls' | 'usdt' | 'irt' = 'rls';
+    if (rawDst === 'usdt' || rawDst === 'tether') {
+      dst = 'usdt';
+    } else if (rawDst === 'irt' || rawDst === 'تومان' || rawDst === 'toman') {
+      dst = 'irt';
+    } else if (rawDst === '﷼' || rawDst === 'rls' || rawDst === 'rial') {
+      dst = 'rls';
     }
-    return { src: clean, dst: 'rls' };
+
+    return { src, dst };
   }
 
   /**
@@ -297,11 +437,12 @@ class NobitexService {
     profile?: NobitexProfile;
   }> {
     // 1. Fetch Wallets, Profile, Trades & Orders in parallel
-    const [wallets, profile, trades, orders] = await Promise.all([
+    const [wallets, profile, trades, orders, portfolioStats] = await Promise.all([
       this.getWallets(config),
       this.getProfile(config).catch(() => undefined),
       this.getUserTrades(config).catch(() => []),
       this.getUserOrders(config).catch(() => []),
+      this.getPortfolioTotalProfit(config).catch(() => null),
     ]);
 
     // 2. Fetch Market Prices for all coins
@@ -323,22 +464,16 @@ class NobitexService {
         const isBuy = trade.type === 'buy' || trade.side === 'buy';
         if (!isBuy) continue;
 
-        let src = '';
-        let dst = 'rls';
-
-        if (trade.srcCurrency) {
-          src = trade.srcCurrency.toLowerCase().trim();
-          dst = (trade.dstCurrency || 'rls').toLowerCase().trim();
-        } else if (trade.symbol) {
-          const parsed = this.parsePairSymbol(trade.symbol);
-          src = parsed.src;
-          dst = parsed.dst;
-        }
-
+        const { src, dst } = this.extractMarketSymbols(trade);
         if (!src) continue;
 
         const amount = parseFloat(trade.amount || trade.matchedAmount || '0');
-        const rawPrice = parseFloat(trade.price || '0');
+        let rawPrice = parseFloat(trade.price || '0');
+
+        // If price is 0 or missing, calculate from total / amount
+        if (rawPrice <= 0 && trade.total && amount > 0) {
+          rawPrice = parseFloat(trade.total) / amount;
+        }
 
         if (amount > 0 && rawPrice > 0) {
           let priceTomans = rawPrice;
@@ -358,26 +493,27 @@ class NobitexService {
       }
     }
 
-    // 3.2 Process Orders (as supplementary fallback if no direct trades)
+    // 3.2 Process Orders (as supplementary fallback if no direct trades for that coin)
     if (orders && Array.isArray(orders)) {
       for (const order of orders) {
         const isBuy = order.type === 'buy' || order.side === 'buy';
         const isExecuted = order.status === 'Done' || (parseFloat(order.matchedAmount || '0') > 0);
         if (!isBuy || !isExecuted) continue;
 
-        let src = (order.srcCurrency || '').toLowerCase().trim();
-        let dst = (order.dstCurrency || 'rls').toLowerCase().trim();
-
-        if (!src && order.symbol) {
-          const parsed = this.parsePairSymbol(order.symbol);
-          src = parsed.src;
-          dst = parsed.dst;
-        }
-
+        const { src, dst } = this.extractMarketSymbols(order);
         if (!src) continue;
 
+        // Skip if trades list already provided comprehensive data for this coin
+        if (buyStatsBySymbol[src] && buyStatsBySymbol[src].totalAmount > 0) {
+          continue;
+        }
+
         const matchedAmount = parseFloat(order.matchedAmount || order.amount || '0');
-        const rawPrice = parseFloat(order.averagePrice || order.price || '0');
+        let rawPrice = parseFloat(order.averagePrice || order.price || '0');
+
+        if (rawPrice <= 0 && order.totalPrice && matchedAmount > 0) {
+          rawPrice = parseFloat(order.totalPrice) / matchedAmount;
+        }
 
         if (matchedAmount > 0 && rawPrice > 0) {
           let priceTomans = rawPrice;

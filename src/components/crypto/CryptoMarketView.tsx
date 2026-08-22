@@ -225,7 +225,9 @@ export const CryptoMarketView: React.FC<CryptoMarketViewProps> = ({
                 </span>
               </div>
             ) : (
-              <span className="text-xs text-slate-500 font-medium block">در انتظار سوابق خرید</span>
+              <span className="text-[11px] text-slate-400 font-medium block">
+                {userOwnedAssets.length > 0 ? 'برای محاسبه روی ارزها بزنید' : 'بدون دارایی فعال'}
+              </span>
             )}
           </div>
 
@@ -292,7 +294,7 @@ export const CryptoMarketView: React.FC<CryptoMarketViewProps> = ({
                       </div>
 
                       {/* Profit/Loss Badge */}
-                      {hasProfit && (
+                      {hasProfit ? (
                         <span
                           className={`text-[10px] font-black px-2 py-0.5 rounded-md inline-flex items-center gap-0.5 dir-ltr shrink-0 ${
                             isProfitPositive
@@ -306,6 +308,10 @@ export const CryptoMarketView: React.FC<CryptoMarketViewProps> = ({
                             <ArrowDownRight className="w-3 h-3" />
                           )}
                           <span>{isProfitPositive ? '+' : ''}{formatPercent(profitPct, 1)}</span>
+                        </span>
+                      ) : (
+                        <span className="text-[10px] text-indigo-400 font-medium px-2 py-0.5 rounded-md bg-indigo-500/10 border border-indigo-500/20 hover:bg-indigo-500/20 shrink-0">
+                          ثبت قیمت خرید ✏️
                         </span>
                       )}
                     </div>
