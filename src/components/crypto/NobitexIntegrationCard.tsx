@@ -29,16 +29,14 @@ export const NobitexIntegrationCard: React.FC<NobitexIntegrationCardProps> = ({
   const {
     isConfigured,
     isSyncing,
+    lastSyncedAt,
     profile,
     error,
     tomanCashBalance,
     syncedCoinsCount,
     syncedTradesCount,
-    config,
     syncWithNobitex,
   } = useNobitex();
-
-  const lastSyncedAt = config.lastSyncedAt;
 
   const handleQuickSync = async () => {
     triggerHaptic('light');

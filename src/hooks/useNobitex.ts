@@ -149,10 +149,10 @@ export function useNobitex() {
 
   return {
     config,
-    profile,
     isConfigured,
     isSyncing,
     lastSyncedAt: config.lastSyncedAt,
+    profile,
     error,
     tomanCashBalance,
     syncedCoinsCount,
