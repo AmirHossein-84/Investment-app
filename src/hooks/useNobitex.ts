@@ -28,6 +28,32 @@ export function useNobitex() {
     (config.authType === 'token' && config.token?.trim())
   );
 
+  // Synchronize config across all hook instances when storage or custom event fires
+  useEffect(() => {
+    const handleSyncConfig = () => {
+      const loaded = loadNobitexConfig();
+      setConfig({
+        authType: loaded.authType || 'api_key',
+        publicKey: loaded.publicKey || (loaded as any).apiKey || '',
+        secretKey: loaded.secretKey || '',
+        token: loaded.token || '',
+        autoSyncEnabled: loaded.autoSyncEnabled ?? true,
+        lastSyncedAt: loaded.lastSyncedAt,
+      });
+    };
+
+    if (typeof window !== 'undefined') {
+      window.addEventListener('nobitex_config_updated', handleSyncConfig);
+      window.addEventListener('storage', handleSyncConfig);
+    }
+    return () => {
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('nobitex_config_updated', handleSyncConfig);
+        window.removeEventListener('storage', handleSyncConfig);
+      }
+    };
+  }, []);
+
   const saveConfig = useCallback((newConfig: NobitexConfig) => {
     setConfig(newConfig);
     saveNobitexConfig(newConfig);
@@ -57,17 +83,20 @@ export function useNobitex() {
   const syncWithNobitex = useCallback(
     async (
       currentAssets: CryptoAsset[],
-      onAssetsUpdated: (updatedAssets: CryptoAsset[]) => void
+      onAssetsUpdated: (updatedAssets: CryptoAsset[]) => void,
+      overrideConfig?: NobitexConfig
     ): Promise<boolean> => {
+      const activeConfig = overrideConfig || config;
+
       if (
-        config.authType === 'api_key' &&
-        (!config.publicKey?.trim() || !config.secretKey?.trim())
+        activeConfig.authType === 'api_key' &&
+        (!activeConfig.publicKey?.trim() || !activeConfig.secretKey?.trim())
       ) {
         setError('لطفاً کلید عمومی و کلید خصوصی نوبیتکس خود را وارد کنید.');
         return false;
       }
 
-      if (config.authType === 'token' && !config.token?.trim()) {
+      if (activeConfig.authType === 'token' && !activeConfig.token?.trim()) {
         setError('لطفاً توکن ورود نوبیتکس را وارد کنید.');
         return false;
       }
@@ -77,7 +106,7 @@ export function useNobitex() {
 
       try {
         const result = await nobitexService.syncUserCryptoHoldings(
-          config,
+          activeConfig,
           currentAssets
         );
 
@@ -90,7 +119,7 @@ export function useNobitex() {
         }
 
         const updatedConfig: NobitexConfig = {
-          ...config,
+          ...activeConfig,
           lastSyncedAt: Date.now(),
         };
         setConfig(updatedConfig);

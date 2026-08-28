@@ -215,6 +215,9 @@ export function loadNobitexConfig(): NobitexConfig {
 export function saveNobitexConfig(config: NobitexConfig): void {
   try {
     localStorage.setItem(STORAGE_KEYS.NOBITEX_CONFIG, JSON.stringify(config));
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new Event('nobitex_config_updated'));
+    }
   } catch (e) {
     console.error('Failed to save Nobitex config:', e);
   }
@@ -267,4 +270,7 @@ export function resetAllDataToDefault(): void {
   localStorage.removeItem(STORAGE_KEYS.MARKET_INSTRUMENTS);
   localStorage.removeItem(STORAGE_KEYS.MARKET_HOLDINGS);
   localStorage.removeItem(STORAGE_KEYS.NOBITEX_CONFIG);
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new Event('nobitex_config_updated'));
+  }
 }

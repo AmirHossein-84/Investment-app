@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Key,
   CheckCircle2,
@@ -13,7 +13,7 @@ import {
 } from 'lucide-react';
 import { CryptoAsset } from '../../types/investment';
 import { useNobitex } from '../../hooks/useNobitex';
-import { NobitexAuthType } from '../../services/nobitex/types';
+import { NobitexAuthType, NobitexConfig } from '../../services/nobitex/types';
 import { formatToman, toPersianDigits, getPersianFormattedDate } from '../../utils/formatters';
 import { triggerHaptic } from '../../utils/haptics';
 import { BottomSheetModal } from '../common/BottomSheetModal';
@@ -54,17 +54,27 @@ export const NobitexSyncModal: React.FC<NobitexSyncModalProps> = ({
   const [showSecret, setShowSecret] = useState(false);
   const [showToken, setShowToken] = useState(false);
 
+  useEffect(() => {
+    if (isOpen) {
+      setAuthType(config.authType || 'api_key');
+      setPublicKey(config.publicKey || '');
+      setSecretKey(config.secretKey || '');
+      setToken(config.token || '');
+    }
+  }, [isOpen, config]);
+
   const handleSaveAndSync = async () => {
     triggerHaptic('medium');
-    const newConfig = {
+    const newConfig: NobitexConfig = {
       authType,
       publicKey: publicKey.trim(),
       secretKey: secretKey.trim(),
       token: token.trim(),
+      autoSyncEnabled: true,
     };
     saveConfig(newConfig);
 
-    const success = await syncWithNobitex(cryptoAssets, onAssetsUpdated);
+    const success = await syncWithNobitex(cryptoAssets, onAssetsUpdated, newConfig);
     if (success) {
       onNotify?.('همگام‌سازی دارایی‌های نوبیتکس با موفقیت انجام شد', 'success');
       onClose();
