@@ -138,6 +138,25 @@ export const BackupRestore: React.FC<BackupRestoreProps> = ({
           </div>
         </div>
       )}
+      {/* About App Branding Footer */}
+      <div className="pt-4 border-t border-slate-800/80 flex flex-col items-center justify-center text-center space-y-2">
+        <div className="w-14 h-14 rounded-2xl bg-slate-900 border border-gold-500/30 p-1 shadow-gold-glow">
+          <img
+            src="/favicon.png"
+            alt="لوگوی برنامه"
+            className="w-full h-full object-cover rounded-xl"
+          />
+        </div>
+        <div>
+          <h4 className="text-xs font-black text-slate-100">
+            اپلیکیشن مدیریت سبد سرمایه‌گذاری طلا و کریپتو
+          </h4>
+          <p className="text-[10px] text-slate-400 mt-0.5">
+            نسخه ۱.۰.۰ • ذخیره‌سازی آفلاین و همگام‌سازی مستقیم با نوبیتکس و بورس
+          </p>
+        </div>
+      </div>
+
     </div>
   );
 };

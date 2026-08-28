@@ -35,9 +35,13 @@ export const Header: React.FC<HeaderProps> = ({
         
         {/* Brand & Logo */}
         <div className="flex items-center gap-3">
-          <div className="relative w-10 h-10 rounded-2xl bg-gradient-to-tr from-amber-500 via-gold-400 to-yellow-300 p-[2px]">
-            <div className="w-full h-full bg-slate-950 rounded-[14px] flex items-center justify-center">
-              <Shield className="w-5 h-5 text-gold-400" />
+          <div className="relative w-10 h-10 rounded-2xl bg-gradient-to-tr from-amber-500 via-gold-400 to-yellow-300 p-[1.5px] shadow-gold-glow">
+            <div className="w-full h-full bg-slate-950 rounded-[14px] overflow-hidden flex items-center justify-center">
+              <img
+                src="/favicon.png"
+                alt="لوگوی مدیریت سرمایه"
+                className="w-full h-full object-cover"
+              />
             </div>
             <span className="absolute -top-1 -right-1 flex h-3 w-3">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
