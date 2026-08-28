@@ -108,18 +108,20 @@ export const CapitalInputCard: React.FC<CapitalInputCardProps> = ({
       </div>
 
       {/* Quick-Add Chips */}
-      <div className="flex flex-wrap items-center gap-2 pt-1">
+      <div className="grid grid-cols-5 gap-1.5 pt-1">
         {[
-          { label: '+۱ میلیون', value: 1000000 },
-          { label: '+۵ میلیون', value: 5000000 },
-          { label: '+۱۰ میلیون', value: 10000000 },
-          { label: '+۵۰ میلیون', value: 50000000 },
-          { label: '+۱۰۰ میلیون', value: 100000000 },
+          { label: '+۱ م', title: '+۱ میلیون تومان', value: 1000000 },
+          { label: '+۵ م', title: '+۵ میلیون تومان', value: 5000000 },
+          { label: '+۱۰ م', title: '+۱۰ میلیون تومان', value: 10000000 },
+          { label: '+۵۰ م', title: '+۵۰ میلیون تومان', value: 50000000 },
+          { label: '+۱۰۰ م', title: '+۱۰۰ میلیون تومان', value: 100000000 },
         ].map((chip) => (
           <button
             key={chip.value}
+            type="button"
+            title={chip.title}
             onClick={() => handleQuickAdd(chip.value)}
-            className="px-3 py-2 rounded-xl bg-slate-900/90 hover:bg-slate-800 text-slate-300 hover:text-gold-300 border border-slate-800 text-xs font-bold transition-all interactive-tap touch-target"
+            className="py-2 px-1 rounded-xl bg-slate-900/90 hover:bg-slate-800 text-slate-300 hover:text-gold-300 border border-slate-800 text-xs font-black transition-all interactive-tap touch-target text-center"
           >
             {chip.label}
           </button>

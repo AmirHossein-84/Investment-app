@@ -60,6 +60,36 @@ export const EditMarketHoldingModal: React.FC<EditMarketHoldingModalProps> = ({
   const avgPriceNumber = parseNumberInput(averageBuyPrice);
   const avgPriceWords = avgPriceNumber > 0 ? numberToPersianWords(avgPriceNumber, 'تومان') : '';
 
+  const footerActions = (
+    <div className="flex items-center justify-between gap-3">
+      <button
+        type="button"
+        onClick={handleDelete}
+        className="p-3 rounded-2xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 transition-all interactive-tap touch-target"
+        title="حذف دارایی"
+      >
+        <Trash2 className="w-4 h-4" />
+      </button>
+
+      <div className="flex items-center gap-2">
+        <button
+          type="button"
+          onClick={onClose}
+          className="px-4 py-3 rounded-2xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold transition-all interactive-tap touch-target"
+        >
+          انصراف
+        </button>
+        <button
+          type="button"
+          onClick={handleSubmit}
+          className="px-5 py-3 rounded-2xl bg-gradient-to-r from-amber-400 via-gold-500 to-yellow-500 text-slate-950 font-black text-xs interactive-tap touch-target shadow-gold-glow"
+        >
+          ذخیره تغییرات
+        </button>
+      </div>
+    </div>
+  );
+
   return (
     <BottomSheetModal
       isOpen={isOpen}
@@ -67,6 +97,7 @@ export const EditMarketHoldingModal: React.FC<EditMarketHoldingModalProps> = ({
       title={`ویرایش دارایی: ${item.instrument.symbol}`}
       subtitle={item.instrument.name}
       icon={<Edit3 className="w-4 h-4 text-gold-400" />}
+      footer={footerActions}
       maxWidth="max-w-md"
     >
       <form onSubmit={handleSubmit} className="space-y-4">
@@ -115,34 +146,6 @@ export const EditMarketHoldingModal: React.FC<EditMarketHoldingModalProps> = ({
             </span>
           </div>
         )}
-
-        {/* Actions */}
-        <div className="pt-2 flex items-center justify-between gap-3 border-t border-slate-800">
-          <button
-            type="button"
-            onClick={handleDelete}
-            className="p-3 rounded-2xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 transition-all interactive-tap touch-target"
-            title="حذف دارایی"
-          >
-            <Trash2 className="w-4 h-4" />
-          </button>
-
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-3 rounded-2xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold transition-all interactive-tap touch-target"
-            >
-              انصراف
-            </button>
-            <button
-              type="submit"
-              className="px-5 py-3 rounded-2xl bg-gradient-to-r from-amber-400 via-gold-500 to-yellow-500 text-slate-950 font-black text-xs interactive-tap touch-target shadow-gold-glow"
-            >
-              ذخیره تغییرات
-            </button>
-          </div>
-        </div>
 
       </form>
     </BottomSheetModal>

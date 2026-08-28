@@ -86,6 +86,43 @@ export const NobitexSyncModal: React.FC<NobitexSyncModalProps> = ({
       ? publicKey.trim().length > 10 && secretKey.trim().length > 10
       : token.trim().length > 10;
 
+  const footerActions = (
+    <div className="flex items-center justify-between gap-2.5">
+      {isConfigured ? (
+        <button
+          type="button"
+          onClick={handleDisconnect}
+          className="px-3.5 py-3 rounded-2xl bg-rose-950/40 hover:bg-rose-900/60 text-rose-400 border border-rose-500/30 text-xs font-bold flex items-center gap-1.5 transition-all interactive-tap touch-target"
+        >
+          <Trash2 className="w-3.5 h-3.5" />
+          <span>قطع اتصال</span>
+        </button>
+      ) : (
+        <div />
+      )}
+
+      <div className="flex items-center gap-2">
+        <button
+          type="button"
+          onClick={onClose}
+          className="px-4 py-3 rounded-2xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold transition-all interactive-tap touch-target"
+        >
+          انصراف
+        </button>
+
+        <button
+          type="button"
+          onClick={handleSaveAndSync}
+          disabled={isSyncing || !isValid}
+          className="px-5 py-3 rounded-2xl bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white text-xs font-black flex items-center gap-2 transition-all interactive-tap shadow-crypto-glow touch-target"
+        >
+          <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin' : ''}`} />
+          <span>{isSyncing ? 'در حال همگام‌سازی...' : 'ذخیره و همگام‌سازی'}</span>
+        </button>
+      </div>
+    </div>
+  );
+
   return (
     <BottomSheetModal
       isOpen={isOpen}
@@ -93,6 +130,7 @@ export const NobitexSyncModal: React.FC<NobitexSyncModalProps> = ({
       title="اتصال و همگام‌سازی حساب صرافی نوبیتکس"
       subtitle="دریافت خودکار موجودی ارزهای دیجیتال و مانده ریالی"
       icon={<Key className="w-4 h-4 text-indigo-400" />}
+      footer={footerActions}
       maxWidth="max-w-lg"
     >
       <div className="space-y-4">
@@ -269,39 +307,6 @@ export const NobitexSyncModal: React.FC<NobitexSyncModalProps> = ({
             <span>{error}</span>
           </div>
         )}
-
-        {/* Bottom Actions - Sticky Footer */}
-        <div className="sticky bottom-0 bg-slate-950/95 backdrop-blur-md pt-3 pb-1 border-t border-slate-800/80 -mx-5 px-5 flex items-center justify-between gap-3 z-10">
-          {isConfigured ? (
-            <button
-              onClick={handleDisconnect}
-              className="px-3.5 py-3 rounded-2xl bg-rose-950/40 hover:bg-rose-900/60 text-rose-400 border border-rose-500/30 text-xs font-bold flex items-center gap-1.5 transition-all interactive-tap touch-target"
-            >
-              <Trash2 className="w-3.5 h-3.5" />
-              <span>قطع اتصال</span>
-            </button>
-          ) : (
-            <div />
-          )}
-
-          <div className="flex items-center gap-2">
-            <button
-              onClick={onClose}
-              className="px-4 py-3 rounded-2xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold transition-all interactive-tap touch-target"
-            >
-              انصراف
-            </button>
-
-            <button
-              onClick={handleSaveAndSync}
-              disabled={isSyncing || !isValid}
-              className="px-5 py-3 rounded-2xl bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white text-xs font-black flex items-center gap-2 transition-all interactive-tap shadow-crypto-glow touch-target"
-            >
-              <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin' : ''}`} />
-              <span>{isSyncing ? 'در حال همگام‌سازی...' : 'ذخیره و همگام‌سازی'}</span>
-            </button>
-          </div>
-        </div>
 
       </div>
     </BottomSheetModal>

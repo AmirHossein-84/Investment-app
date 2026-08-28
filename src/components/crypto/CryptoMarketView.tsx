@@ -261,7 +261,7 @@ export const CryptoMarketView: React.FC<CryptoMarketViewProps> = ({
             <PortfolioDonutChart
               items={donutItems}
               centerTitle="مجموع رمزارزها"
-              centerSubtitle={formatCurrency(totalCryptoValue, true)}
+              formattedTotalValue={formatCurrency(totalCryptoValue)}
               size={200}
               strokeWidth={22}
             />

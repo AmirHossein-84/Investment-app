@@ -23,6 +23,7 @@ import { calculateOptimalSales, SellCalculationResult } from '../../utils/sellCa
 import { formatToman, formatPercent, toPersianDigits, parseNumberInput } from '../../utils/formatters';
 import { triggerHaptic } from '../../utils/haptics';
 import { CurrencyDisplayMode } from '../../hooks/useCurrencyDisplay';
+import { BottomSheetModal } from '../common/BottomSheetModal';
 
 interface SellViewProps {
   cryptoAssets: CryptoAsset[];
@@ -581,50 +582,53 @@ export const SellView: React.FC<SellViewProps> = ({
       )}
 
       {/* Confirmation Modal */}
-      {isConfirmModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-fadeIn">
-          <div className="w-full max-w-sm p-5 rounded-3xl bg-slate-900 border border-rose-500/40 shadow-2xl space-y-4 animate-scaleUp">
-            <div className="flex items-center gap-2 text-rose-400">
-              <AlertTriangle className="w-5 h-5" />
-              <h3 className="font-black text-base text-slate-100">تایید کسر از موجودی طلا</h3>
-            </div>
+      <BottomSheetModal
+        isOpen={isConfirmModalOpen}
+        onClose={() => setIsConfirmModalOpen(false)}
+        title="تایید کسر از موجودی طلا و بورس"
+        subtitle="کسر مستقیم واحدهای فروخته‌شده از موجودی سبد سرمایه‌گذاری"
+        icon={<AlertTriangle className="w-4 h-4 text-rose-400" />}
+        maxWidth="max-w-sm"
+        footer={
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setIsConfirmModalOpen(false)}
+              className="flex-1 py-3 rounded-2xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs transition-all interactive-tap touch-target"
+            >
+              انصراف
+            </button>
+            <button
+              type="button"
+              onClick={handleExecuteGoldDeductions}
+              className="flex-1 py-3 rounded-2xl bg-rose-600 hover:bg-rose-500 text-white font-black text-xs transition-all interactive-tap touch-target shadow-lg"
+            >
+              بله، کسر شود
+            </button>
+          </div>
+        }
+      >
+        <div className="space-y-3 text-xs">
+          <p className="text-slate-300 leading-relaxed">
+            آیا از کسر مقادیر محاسبه‌شده از موجودی صندوق‌های طلای بورس و طلای فیزیکی خود اطمینان دارید؟
+          </p>
 
-            <p className="text-xs text-slate-300 leading-relaxed">
-              آیا از کسر مقادیر محاسبه‌شده از موجودی صندوق‌های طلای بورس و طلای فیزیکی خود اطمینان دارید؟
-            </p>
-
-            <div className="p-3 rounded-2xl bg-slate-950/80 border border-slate-800 text-xs space-y-1.5">
-              {calculationResult.bourseGoldSales.map((item) => (
-                <div key={item.id} className="flex items-center justify-between text-slate-300">
-                  <span>{item.symbol}:</span>
-                  <span className="font-bold text-rose-400">کسر {toPersianDigits(item.unitsToSell)} واحد</span>
-                </div>
-              ))}
-              {calculationResult.physicalGoldSales.map((item) => (
-                <div key={item.id} className="flex items-center justify-between text-slate-300">
-                  <span>{item.title}:</span>
-                  <span className="font-bold text-rose-400">کسر {toPersianDigits(item.quantityToSell)} {item.unit}</span>
-                </div>
-              ))}
-            </div>
-
-            <div className="flex items-center gap-2 pt-2">
-              <button
-                onClick={handleExecuteGoldDeductions}
-                className="flex-1 py-2.5 rounded-2xl bg-rose-600 hover:bg-rose-500 text-white font-black text-xs transition-all interactive-tap"
-              >
-                بله، کسر شود
-              </button>
-              <button
-                onClick={() => setIsConfirmModalOpen(false)}
-                className="flex-1 py-2.5 rounded-2xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs transition-all interactive-tap"
-              >
-                انصراف
-              </button>
-            </div>
+          <div className="p-3.5 rounded-2xl bg-slate-950/80 border border-slate-800 space-y-2">
+            {calculationResult.bourseGoldSales.map((item) => (
+              <div key={item.id} className="flex items-center justify-between text-slate-300">
+                <span>{item.symbol}:</span>
+                <span className="font-bold text-rose-400">کسر {toPersianDigits(item.unitsToSell)} واحد</span>
+              </div>
+            ))}
+            {calculationResult.physicalGoldSales.map((item) => (
+              <div key={item.id} className="flex items-center justify-between text-slate-300">
+                <span>{item.title}:</span>
+                <span className="font-bold text-rose-400">کسر {toPersianDigits(item.quantityToSell)} {item.unit}</span>
+              </div>
+            ))}
           </div>
         </div>
-      )}
+      </BottomSheetModal>
 
     </div>
   );

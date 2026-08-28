@@ -412,8 +412,13 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
         <PortfolioDonutChart
           items={chartItems}
-          centerTitle="ارزش سبد"
-          centerSubtitle={formatCurrency(totalPortfolioValue, true)}
+          centerTitle="ارزش کل سبد"
+          formattedTotalValue={formatCurrency(totalPortfolioValue)}
+          centerSubtitle={
+            currencyMode === 'toman' && usdtRateTomans > 0
+              ? `≈ $${toPersianDigits(Number((totalPortfolioValue / usdtRateTomans).toFixed(1)))}`
+              : undefined
+          }
           size={210}
           strokeWidth={22}
         />
@@ -459,7 +464,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       {totalInputAmount > 0 && calculationResult.totalSavingsAmount > 0 && (
         <div className="space-y-4 animate-fadeIn">
           
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
             <div>
               <h3 className="text-sm font-black text-slate-100 flex items-center gap-2">
                 <Sparkles className="w-4 h-4 text-gold-400" />
@@ -475,7 +480,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 triggerHaptic('medium');
                 onApplyPurchases();
               }}
-              className="px-3.5 py-2 rounded-2xl bg-gradient-to-r from-amber-400 to-gold-500 hover:from-amber-300 hover:to-gold-400 text-slate-950 font-black text-xs transition-all shadow-gold-glow interactive-tap"
+              className="self-start sm:self-auto px-3.5 py-2 rounded-2xl bg-gradient-to-r from-amber-400 to-gold-500 hover:from-amber-300 hover:to-gold-400 text-slate-950 font-black text-xs transition-all shadow-gold-glow interactive-tap shrink-0"
             >
               ثبت همه خریدها
             </button>

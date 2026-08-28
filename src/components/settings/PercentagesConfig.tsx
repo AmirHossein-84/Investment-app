@@ -47,11 +47,18 @@ const DEFAULT_STRATEGY_WEIGHTS: Record<string, number> = {
 
 // Clean duplicate parentheses from coin names
 function cleanCoinName(name: string, symbol: string): { faName: string; enName: string } {
-  const clean = name.replace(/[()]/g, ' ').replace(/\s+/g, ' ').trim();
-  const parts = clean.split(/[-–—/]/).map((s) => s.trim());
+  const match = name.match(/^(.*?)\s*\((.*?)\)\s*$/);
+  if (match) {
+    return {
+      faName: match[1].trim() || symbol,
+      enName: match[2].trim() || symbol.toUpperCase(),
+    };
+  }
+  const faMatch = name.match(/[\u0600-\u06FF\s]+/);
+  const faName = faMatch ? faMatch[0].trim() : name;
   return {
-    faName: parts[0] || symbol,
-    enName: parts[1] || symbol.toUpperCase(),
+    faName: faName || symbol,
+    enName: symbol.toUpperCase(),
   };
 }
 
@@ -241,13 +248,13 @@ export const PercentagesConfig: React.FC<PercentagesConfigProps> = ({
           </div>
         </div>
 
-        {/* Quick Ratio Presets */}
-        <div className="flex items-center gap-2 pt-1">
+        {/* Quick Ratio Presets - Compact and Untruncated */}
+        <div className="grid grid-cols-4 gap-2 pt-1">
           {[
-            { gold: 80, crypto: 20, label: '۸۰ طلا / ۲۰ کریپتو' },
-            { gold: 70, crypto: 30, label: '۷۰ طلا / ۳۰ کریپتو' },
-            { gold: 50, crypto: 50, label: '۵۰ / ۵۰ مساوی' },
-            { gold: 90, crypto: 10, label: '۹۰ طلا / ۱۰ کریپتو' },
+            { gold: 80, crypto: 20, label: '۸۰ / ۲۰', sub: 'پیشنهادی' },
+            { gold: 70, crypto: 30, label: '۷۰ / ۳۰', sub: 'متعادل' },
+            { gold: 50, crypto: 50, label: '۵۰ / ۵۰', sub: 'مساوی' },
+            { gold: 90, crypto: 10, label: '۹۰ / ۱۰', sub: 'کم‌ریسک' },
           ].map((preset) => (
             <button
               key={preset.gold}
@@ -256,13 +263,20 @@ export const PercentagesConfig: React.FC<PercentagesConfigProps> = ({
                 triggerHaptic('light');
                 handleGoldSplitChange(preset.gold);
               }}
-              className={`flex-1 py-1.5 px-1 rounded-xl text-[10px] font-bold transition-all truncate ${
+              className={`py-2 px-1 rounded-2xl text-center transition-all interactive-tap touch-target border ${
                 settings.goldPercent === preset.gold
-                  ? 'bg-gold-400 text-slate-950 shadow-md font-black'
-                  : 'bg-slate-900/90 text-slate-400 hover:text-slate-200 border border-slate-800'
+                  ? 'bg-gradient-to-r from-amber-500 to-gold-400 text-slate-950 border-gold-400 shadow-md font-black'
+                  : 'bg-slate-900/90 text-slate-300 hover:text-slate-100 border-slate-800 hover:border-slate-700'
               }`}
             >
-              {preset.label}
+              <div className="text-xs font-black dir-ltr text-center">
+                {preset.label}
+              </div>
+              <div className={`text-[9px] mt-0.5 font-medium ${
+                settings.goldPercent === preset.gold ? 'text-slate-950' : 'text-slate-400'
+              }`}>
+                {preset.sub}
+              </div>
             </button>
           ))}
         </div>
@@ -381,17 +395,30 @@ export const PercentagesConfig: React.FC<PercentagesConfigProps> = ({
             </p>
           </div>
 
-          {/* Sum pill badge */}
-          <div className="flex items-center gap-2">
+          {/* Sum pill badge & quick action */}
+          <div className="flex items-center gap-2 flex-wrap">
             <span
-              className={`text-xs px-3 py-1 rounded-full font-black border ${
+              className={`text-xs px-3 py-1.5 rounded-2xl font-black border flex items-center gap-1.5 ${
                 isCryptoSum100
                   ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/40'
                   : 'bg-amber-500/15 text-amber-400 border-amber-500/40'
               }`}
             >
-              مجموع: {toPersianDigits(totalCryptoTargetSum.toFixed(1))}٪
+              <span className={`w-2 h-2 rounded-full ${isCryptoSum100 ? 'bg-emerald-400' : 'bg-amber-400 animate-pulse'}`} />
+              <span>مجموع: {toPersianDigits(totalCryptoTargetSum.toFixed(1))}٪</span>
             </span>
+
+            {!isCryptoSum100 && (
+              <button
+                type="button"
+                onClick={handleNormalizeCryptoPercents}
+                className="px-3 py-1.5 rounded-2xl bg-amber-400 hover:bg-amber-300 text-slate-950 text-xs font-black flex items-center gap-1.5 transition-all interactive-tap touch-target shadow-sm"
+                title="تراز خودکار همه درصدها روی ۱۰۰٪"
+              >
+                <RotateCcw className="w-3.5 h-3.5" />
+                <span>تراز خودکار روی ۱۰۰٪</span>
+              </button>
+            )}
           </div>
         </div>
 

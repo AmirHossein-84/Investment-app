@@ -10,6 +10,8 @@ import {
   ShieldCheck,
   AlertCircle,
   WifiOff,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react';
 import { PhysicalGoldItem, PhysicalGoldType } from '../../types/investment';
 import { formatToman, formatPercent, toPersianDigits } from '../../utils/formatters';
@@ -43,6 +45,7 @@ export const PhysicalGoldSection: React.FC<PhysicalGoldSectionProps> = ({
   onNotify,
 }) => {
   const [selectedItem, setSelectedItem] = useState<PhysicalGoldItem | null>(null);
+  const [showAllItems, setShowAllItems] = useState(false);
 
   const handleRefresh = async () => {
     triggerHaptic('light');
@@ -53,6 +56,13 @@ export const PhysicalGoldSection: React.FC<PhysicalGoldSectionProps> = ({
   };
 
   const hasAnyPrice = items.some((i) => i.unitPriceTomans > 0);
+  const activeItems = items.filter((i) => i.quantity > 0);
+
+  const displayedItems = showAllItems
+    ? items
+    : activeItems.length > 0
+    ? activeItems
+    : items.slice(0, 2);
 
   return (
     <div className="p-4 sm:p-6 rounded-3xl bg-gradient-to-br from-amber-950/30 via-slate-900 to-slate-950 border border-gold-500/40 shadow-xl space-y-4">
@@ -100,7 +110,7 @@ export const PhysicalGoldSection: React.FC<PhysicalGoldSectionProps> = ({
 
       {/* Grid of Gold & Coin Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        {items.map((item) => {
+        {displayedItems.map((item) => {
           const hasHolding = item.quantity > 0;
           const itemTotalVal = item.quantity * item.unitPriceTomans;
           const changePct = item.priceChangePercent || 0;
@@ -180,6 +190,38 @@ export const PhysicalGoldSection: React.FC<PhysicalGoldSectionProps> = ({
           );
         })}
       </div>
+
+      {/* Expand / Collapse Action Button */}
+      {items.length > displayedItems.length && (
+        <button
+          type="button"
+          onClick={() => {
+            triggerHaptic('light');
+            setShowAllItems(true);
+          }}
+          className="w-full py-2.5 px-3 rounded-2xl bg-slate-900/80 hover:bg-slate-800 border border-slate-800 text-xs font-bold text-gold-400 hover:text-gold-300 transition-all flex items-center justify-center gap-1.5 interactive-tap"
+        >
+          <ChevronDown className="w-4 h-4" />
+          <span>
+            {activeItems.length > 0
+              ? `مشاهده و ثبت سایر اقلام طلا و مسکوکات (${toPersianDigits(items.length - activeItems.length)} قلم دیگر)`
+              : `مشاهده و ثبت سایر اقلام و مسکوکات طلا (${toPersianDigits(items.length)} مورد)`}
+          </span>
+        </button>
+      )}
+      {showAllItems && (
+        <button
+          type="button"
+          onClick={() => {
+            triggerHaptic('light');
+            setShowAllItems(false);
+          }}
+          className="w-full py-2 px-3 rounded-2xl bg-slate-900/40 hover:bg-slate-900 text-slate-400 hover:text-slate-200 border border-slate-800 text-[11px] font-medium transition-all flex items-center justify-center gap-1 interactive-tap"
+        >
+          <ChevronUp className="w-3.5 h-3.5" />
+          <span>نمایش فشرده</span>
+        </button>
+      )}
 
       {/* Edit Modal */}
       <EditPhysicalGoldModal

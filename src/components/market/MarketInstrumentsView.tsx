@@ -264,8 +264,8 @@ export const MarketInstrumentsView: React.FC<MarketInstrumentsViewProps> = ({
 
           <PortfolioDonutChart
             items={allDonutItems}
-            centerTitle="مجموع طلا"
-            centerSubtitle={formatCurrency(totalCombinedGoldAndMarketValue, true)}
+            centerTitle="مجموع دارایی طلا"
+            formattedTotalValue={formatCurrency(totalCombinedGoldAndMarketValue)}
             size={210}
             strokeWidth={22}
           />

@@ -137,9 +137,22 @@ export const GoldBuyCard: React.FC<GoldBuyCardProps> = ({
               {formatToman(goldBuyAmount)}{' '}
               <span className="text-xs font-bold text-slate-400">تومان</span>
             </div>
-            <span className="text-[10px] text-slate-500 block mt-0.5 dir-ltr">
-              نرخ واحد: {formatToman(unitPriceTomans)} ت ({new Intl.NumberFormat('en-US').format(unitPriceTomans * 10)} ریال)
-            </span>
+            <div className="flex items-center gap-2 mt-1">
+              <span className="text-[11px] text-slate-400 dir-ltr font-medium">
+                نرخ واحد: <strong className="text-slate-200">{formatToman(unitPriceTomans)} ت</strong>
+              </span>
+              {quote && (
+                <span
+                  className={`text-[10px] font-black px-1.5 py-0.2 rounded-md dir-ltr ${
+                    quote.priceChangePercent >= 0
+                      ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30'
+                      : 'bg-rose-500/15 text-rose-400 border border-rose-500/30'
+                  }`}
+                >
+                  {quote.priceChangePercent >= 0 ? '+' : ''}{formatPercent(quote.priceChangePercent)}
+                </span>
+              )}
+            </div>
           </div>
           <button
             onClick={handleCopyAmount}
@@ -193,22 +206,11 @@ export const GoldBuyCard: React.FC<GoldBuyCardProps> = ({
       </div>
 
       {/* TSETMC Live Tip Footer */}
-      <div className="text-[11px] text-slate-300 bg-amber-500/10 p-3 rounded-2xl border border-amber-500/20 flex items-center justify-between gap-2">
-        <div className="flex items-center gap-2">
-          <TrendingUp className="w-4 h-4 text-gold-400 shrink-0" />
-          <span className="leading-relaxed">
-            کافیست در ایزی‌تریدر، مفید یا کارگزاری خود نماد <strong>{selectedSymbol}</strong> را سرچ کرده و <strong>{toPersianDigits(unitsToBuy)} واحد</strong> با مبلغ <strong>{formatToman(exactBuyValue)} تومان</strong> سفارش خرید ثبت کنید.
-          </span>
-        </div>
-        {quote && (
-          <span
-            className={`text-xs font-black dir-ltr shrink-0 ${
-              quote.priceChangePercent >= 0 ? 'text-emerald-400' : 'text-rose-400'
-            }`}
-          >
-            {quote.priceChangePercent >= 0 ? '+' : ''}{formatPercent(quote.priceChangePercent)}
-          </span>
-        )}
+      <div className="text-[11px] text-slate-300 bg-amber-500/10 p-3.5 rounded-2xl border border-amber-500/20 flex items-center gap-2.5">
+        <TrendingUp className="w-4 h-4 text-gold-400 shrink-0" />
+        <p className="leading-relaxed">
+          کافیست در ایزی‌تریدر یا کارگزاری خود نماد <strong>{selectedSymbol}</strong> را سرچ کرده و <strong>{toPersianDigits(unitsToBuy)} واحد</strong> با قیمت <strong>{formatToman(unitPriceTomans)} تومان</strong> سفارش خرید ثبت کنید.
+        </p>
       </div>
 
     </div>

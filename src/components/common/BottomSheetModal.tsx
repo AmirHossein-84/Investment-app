@@ -10,6 +10,7 @@ interface BottomSheetModalProps {
   subtitle?: string;
   icon?: React.ReactNode;
   children: React.ReactNode;
+  footer?: React.ReactNode;
   maxWidth?: string;
 }
 
@@ -20,6 +21,7 @@ export const BottomSheetModal: React.FC<BottomSheetModalProps> = ({
   subtitle,
   icon,
   children,
+  footer,
   maxWidth = 'max-w-lg',
 }) => {
   const sheetRef = useRef<HTMLDivElement>(null);
@@ -78,7 +80,7 @@ export const BottomSheetModal: React.FC<BottomSheetModalProps> = ({
       <div
         ref={sheetRef}
         onClick={(e) => e.stopPropagation()}
-        className={`w-full ${maxWidth} bg-slate-950 border-t sm:border border-slate-800 rounded-t-3xl sm:rounded-3xl shadow-2xl overflow-hidden max-h-[88vh] max-h-[88dvh] flex flex-col transition-transform duration-200 ease-out`}
+        className={`w-full ${maxWidth} bg-slate-950 border-t sm:border border-slate-800 rounded-t-[32px] sm:rounded-3xl shadow-2xl overflow-hidden max-h-[90vh] max-h-[90dvh] flex flex-col transition-transform duration-200 ease-out`}
       >
         {/* Mobile Drag Handle */}
         <div
@@ -99,9 +101,13 @@ export const BottomSheetModal: React.FC<BottomSheetModalProps> = ({
               </div>
             )}
             <div className="min-w-0">
-              <h3 className="text-sm font-black text-slate-100 truncate">{title}</h3>
+              <h3 className="text-xs sm:text-sm font-black text-slate-100 leading-tight">
+                {title}
+              </h3>
               {subtitle && (
-                <p className="text-[11px] text-slate-400 truncate">{subtitle}</p>
+                <p className="text-[10px] sm:text-[11px] text-slate-400 truncate mt-0.5">
+                  {subtitle}
+                </p>
               )}
             </div>
           </div>
@@ -111,7 +117,7 @@ export const BottomSheetModal: React.FC<BottomSheetModalProps> = ({
               triggerHaptic('light');
               onClose();
             }}
-            className="p-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-slate-200 border border-slate-800 transition-all touch-target"
+            className="p-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-slate-200 border border-slate-800 transition-all touch-target shrink-0"
             title="بستن"
           >
             <X className="w-4 h-4" />
@@ -119,9 +125,16 @@ export const BottomSheetModal: React.FC<BottomSheetModalProps> = ({
         </div>
 
         {/* Modal Body Content */}
-        <div className="p-5 overflow-y-auto overscroll-contain flex-1 space-y-4 pb-[max(2rem,env(safe-area-inset-bottom))]">
+        <div className={`p-5 overflow-y-auto overscroll-contain flex-1 space-y-4 ${footer ? 'pb-4' : 'pb-[max(2rem,env(safe-area-inset-bottom))]'}`}>
           {children}
         </div>
+
+        {/* Optional Fixed Bottom Footer */}
+        {footer && (
+          <div className="p-4 border-t border-slate-800/80 bg-slate-950/95 backdrop-blur-md shrink-0 pb-[max(1rem,env(safe-area-inset-bottom))]">
+            {footer}
+          </div>
+        )}
       </div>
     </div>
   );

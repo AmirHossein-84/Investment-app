@@ -14,6 +14,7 @@ interface PortfolioDonutChartProps {
   items: DonutChartItem[];
   centerTitle?: string;
   centerSubtitle?: string;
+  formattedTotalValue?: string;
   emptyLabel?: string;
   size?: number;
   strokeWidth?: number;
@@ -24,6 +25,7 @@ export const PortfolioDonutChart: React.FC<PortfolioDonutChartProps> = ({
   items,
   centerTitle = 'مجموع ارزش',
   centerSubtitle,
+  formattedTotalValue,
   emptyLabel = 'داده‌ای برای نمایش وجود ندارد',
   size = 220,
   strokeWidth = 24,
@@ -58,7 +60,7 @@ export const PortfolioDonutChart: React.FC<PortfolioDonutChartProps> = ({
     const percent = (item.value / totalValue) * 100;
     const strokeDasharray = `${(percent / 100) * circumference} ${circumference}`;
     // Start at -90deg (top center) + accumulated rotation
-    const rotation = (accumulatedPercent / 100) * 360 - 90;
+    const rotation = (accumulatedPercent / 100) * 360;
     accumulatedPercent += percent;
 
     return {
@@ -69,35 +71,26 @@ export const PortfolioDonutChart: React.FC<PortfolioDonutChartProps> = ({
     };
   });
 
-  const activeItem = slices.find((s) => s.id === activeItemId) || null;
+  const activeItem = slices.find((s) => s.id === activeItemId);
 
   return (
-    <div className="flex flex-col items-center w-full space-y-4">
-      {/* SVG Donut Chart */}
-      <div className="relative flex items-center justify-center" style={{ width: size, height: size }}>
-        <svg
-          width={size}
-          height={size}
-          viewBox={`0 0 ${size} ${size}`}
-          className="transform rotate-0 transition-all duration-300"
-        >
-          {/* Background circle */}
+    <div className="flex flex-col items-center gap-4">
+      {/* SVG Donut */}
+      <div className="relative" style={{ width: size, height: size }}>
+        <svg width={size} height={size} className="transform -rotate-90">
+          {/* Background circle track */}
           <circle
             cx={center}
             cy={center}
             r={radius}
-            fill="none"
-            stroke="currentColor"
+            fill="transparent"
+            stroke="rgba(30, 41, 59, 0.5)"
             strokeWidth={strokeWidth}
-            className="text-slate-900"
           />
 
           {/* Slices */}
           {slices.map((slice) => {
-            const isHovered = activeItemId === slice.id;
-            const isAnyHovered = activeItemId !== null;
-            const opacity = isAnyHovered ? (isHovered ? 1 : 0.4) : 0.95;
-            const currentStroke = isHovered ? strokeWidth + 4 : strokeWidth;
+            const isSelected = activeItemId === slice.id;
 
             return (
               <circle
@@ -105,38 +98,38 @@ export const PortfolioDonutChart: React.FC<PortfolioDonutChartProps> = ({
                 cx={center}
                 cy={center}
                 r={radius}
-                fill="none"
+                fill="transparent"
                 stroke={slice.color}
-                strokeWidth={currentStroke}
+                strokeWidth={isSelected ? strokeWidth + 4 : strokeWidth}
                 strokeDasharray={slice.strokeDasharray}
-                strokeDashoffset={0}
-                transform={`rotate(${slice.rotation} ${center} ${center})`}
-                strokeLinecap="round"
-                className="transition-all duration-300 cursor-pointer"
+                strokeDashoffset="0"
                 style={{
-                  opacity,
-                  filter: isHovered ? `drop-shadow(0 0 8px ${slice.color})` : undefined,
+                  transformOrigin: 'center',
+                  transform: `rotate(${slice.rotation}deg)`,
+                  transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                  filter: isSelected ? 'drop-shadow(0 0 8px rgba(255, 215, 0, 0.4))' : 'none',
+                  cursor: 'pointer',
                 }}
-                onMouseEnter={() => setActiveItemId(slice.id)}
-                onMouseLeave={() => setActiveItemId(null)}
-                onClick={() => setActiveItemId(activeItemId === slice.id ? null : slice.id)}
+                onClick={() => {
+                  setActiveItemId(isSelected ? null : slice.id);
+                }}
               />
             );
           })}
         </svg>
 
-        {/* Center Text */}
+        {/* Center Content Badge */}
         <div
           className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-center px-4"
           style={{ width: size, height: size }}
         >
           {activeItem ? (
             <div className="space-y-0.5 animate-fadeIn">
-              <span className="text-[10px] font-bold text-slate-400 block truncate max-w-[120px]">
+              <span className="text-[10px] font-bold text-slate-400 block truncate max-w-[120px] mx-auto">
                 {activeItem.label}
               </span>
-              <span className="text-sm sm:text-base font-black text-slate-100 block">
-                {formatToman(activeItem.value)}
+              <span className="text-xs sm:text-sm font-black text-slate-100 block dir-ltr text-center">
+                {formatToman(activeItem.value)} <span className="text-[9px] text-slate-400 font-normal">ت</span>
               </span>
               <span
                 className="text-[10px] font-bold px-2 py-0.5 rounded-full inline-block mt-0.5"
@@ -150,11 +143,11 @@ export const PortfolioDonutChart: React.FC<PortfolioDonutChartProps> = ({
               <span className="text-[10px] font-medium text-slate-400 block">
                 {centerTitle}
               </span>
-              <span className="text-sm sm:text-base font-black text-gold-400 block">
-                {formatToman(totalValue)}
+              <span className="text-xs sm:text-sm font-black text-gold-400 block dir-ltr text-center">
+                {formattedTotalValue || `${formatToman(totalValue)} ت`}
               </span>
               {centerSubtitle && (
-                <span className="text-[9px] text-slate-500 block">
+                <span className="text-[9px] text-slate-500 block dir-ltr text-center font-medium">
                   {centerSubtitle}
                 </span>
               )}
